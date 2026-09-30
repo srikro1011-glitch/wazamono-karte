@@ -1,0 +1,964 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0a09">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex,nofollow">
+<title>ワザモノworks 案件カルテ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0a09; --panel:#13110f; --panel2:#1a1714; --field:#0e0d0b;
+  --ink:#f4efe6; --sub:#a39a8b; --line:rgba(212,168,75,.22); --line2:rgba(255,255,255,.08);
+  --gold:#d4a84b; --gold-hi:#f3dc9b; --gold-lo:#8a6320;
+  --gold-grad:linear-gradient(135deg,#f3dc9b 0%,#d4a84b 42%,#9a6f22 100%);
+  --ok:#8bd0a0; --warn:#e6b25a; --err:#f08a80;
+  --serif:'Shippori Mincho','Hiragino Mincho ProN','Yu Mincho',serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;color-scheme:dark}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.75 system-ui,-apple-system,'Hiragino Sans','Yu Gothic UI',sans-serif;min-height:100vh;position:relative;overflow-x:hidden}
+/* 名刺の黒いシルク地 */
+body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
+  background:
+   radial-gradient(900px 520px at 88% -8%,rgba(255,255,255,.075),transparent 62%),
+   radial-gradient(700px 500px at 10% 110%,rgba(212,168,75,.09),transparent 62%),
+   radial-gradient(500px 300px at 60% 40%,rgba(255,255,255,.025),transparent 70%),var(--bg)}
+.swoosh{position:fixed;right:0;bottom:0;width:min(1000px,150vw);z-index:-1;pointer-events:none;opacity:.3}
+.swoosh.strong{opacity:.42;inset:0;width:100vw;height:100vh;transform:translateX(24%)}
+@media(min-width:900px){.swoosh.strong{transform:none;opacity:.7}}
+h1,h2,h3,.serif{font-family:var(--serif);font-weight:700;margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+.wrap{max-width:820px;margin:0 auto;padding:0 16px calc(110px + env(safe-area-inset-bottom))}
+
+/* ロゴ */
+.mark{display:inline-flex;flex-direction:column;line-height:1;color:#fff}
+.mark .co{font:500 11px/1 var(--serif);letter-spacing:.3em;margin-left:.2em}
+.mark .wz{font:800 34px/1.05 var(--serif);letter-spacing:.02em;font-style:italic;margin-top:2px}
+.mark .wk{font:500 20px/1 var(--serif);letter-spacing:.3em;display:flex;align-items:center;gap:1px;margin-top:2px}
+.mark .ap{width:.95em;height:.95em}
+.mark.sm .co{display:none}.mark.sm .wz{font-size:17px}.mark.sm .wk{font-size:11px;margin-top:0}
+.mark.sm{flex-direction:row;align-items:baseline;gap:6px}
+
+/* 入力部品 */
+label,.lb{display:block;font-size:12px;font-weight:600;color:var(--sub);margin:18px 0 7px;letter-spacing:.06em}
+label b,.lb b{color:var(--gold);font-weight:700;margin-left:4px}
+input,select,textarea{width:100%;font-size:16px;padding:12px 13px;border:1px solid var(--line2);background:var(--field);border-radius:8px;outline:none;color:var(--ink);transition:border-color .15s,box-shadow .15s}
+input::placeholder,textarea::placeholder{color:#5f574b}
+input:focus,textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(212,168,75,.16)}
+textarea{min-height:92px;resize:vertical;line-height:1.7}
+textarea.tall{min-height:170px}
+input[type=date]{min-height:47px}
+.btn{border:0;background:var(--gold-grad);color:#1a1206;padding:12px 22px;border-radius:8px;cursor:pointer;font-weight:700;letter-spacing:.06em;box-shadow:0 6px 18px rgba(212,168,75,.18)}
+.btn:active{transform:translateY(1px)}
+.btn.ghost{background:transparent;color:var(--gold);border:1px solid var(--line);box-shadow:none}
+.btn.danger{background:transparent;color:var(--err);border:1px solid rgba(240,138,128,.35);box-shadow:none}
+.btn.small{padding:7px 14px;font-size:13px}
+.btn:disabled{opacity:.45;cursor:default}
+.eyebrow{font:11px/1 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.22em;color:var(--gold);text-transform:uppercase}
+.gold{background:var(--gold-grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hr{height:1px;background:linear-gradient(90deg,var(--gold),transparent);border:0;margin:14px 0}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.cb,.pr{border:1px solid var(--line2);background:var(--field);color:var(--sub);padding:7px 14px;border-radius:99px;cursor:pointer;font-size:14px}
+.cb.on{border-color:var(--gold);color:#1a1206;background:var(--gold-grad);font-weight:700}
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.pr{font-size:12.5px;padding:4px 11px;border-style:dashed;border-color:var(--line)}
+.pr.on{color:var(--gold);border-style:solid;border-color:var(--gold)}
+.tog{display:flex;align-items:center;justify-content:space-between;width:100%;background:var(--field);border:1px solid var(--line2);border-radius:8px;padding:11px 13px;cursor:pointer;margin-top:18px;text-align:left}
+.tog span.t{font-size:14px;color:var(--ink)}
+.tog i{width:44px;height:26px;border-radius:99px;background:#2a2622;position:relative;transition:.2s;flex:none}
+.tog i::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#8b8172;transition:.2s}
+.tog.on i{background:var(--gold-grad)}
+.tog.on i::after{left:21px;background:#1a1206}
+
+/* バー */
+.bar{position:sticky;top:0;z-index:20;background:rgba(11,10,9,.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.bar .in{max-width:820px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:10px}
+.bar .mid{flex:1;display:flex;justify-content:center}
+.link{background:none;border:0;color:var(--sub);cursor:pointer;padding:6px 0;font-size:14px}
+.stat{font-size:12px;padding:3px 11px;border-radius:99px;border:1px solid var(--line2);white-space:nowrap;color:var(--sub)}
+.stat.saved{color:var(--ok);border-color:rgba(139,208,160,.4)}
+.stat.dirty,.stat.local,.stat.saving{color:var(--warn);border-color:rgba(230,178,90,.45)}
+.stat.error{color:var(--err);border-color:rgba(240,138,128,.5)}
+.prog{height:2px;background:var(--line2)}
+.prog i{display:block;height:100%;width:0;background:var(--gold-grad);transition:width .3s}
+
+/* ログイン */
+.login{min-height:100vh;padding:26px 24px;display:flex;flex-direction:column;justify-content:space-between;max-width:560px;margin:0 auto;position:relative}
+.login .head h1{font-size:clamp(30px,8.4vw,44px);line-height:1.35;margin:40px 0 12px}
+.login .lead{color:var(--sub);max-width:30em}
+.login .form{margin-top:12px;max-width:380px}
+.login .foot{color:var(--sub);font-size:11px;letter-spacing:.2em;padding-top:30px}
+.ul{background:none;border:0;border-bottom:1px solid var(--line);border-radius:0;padding:12px 2px;background:transparent}
+.ul:focus{box-shadow:none;border-bottom-color:var(--gold)}
+.err{color:var(--err);font-size:13px;margin-top:10px}
+
+/* 一覧 */
+.hero{padding:30px 0 6px}
+.hero h2{font-size:30px}
+.search{margin-top:16px}
+.row{display:block;width:100%;text-align:left;background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:12px;padding:15px 17px;margin-top:11px;cursor:pointer;position:relative}
+.row::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:0 3px 3px 0;background:var(--gold-grad)}
+.row .n{font:700 19px/1.4 var(--serif)}
+.row .m{font-size:12.5px;color:var(--sub);margin-top:3px}
+.badge{display:inline-block;font:600 11px/1 system-ui;padding:4px 9px;border-radius:99px;border:1px solid var(--line);color:var(--gold);margin-left:8px;vertical-align:middle;letter-spacing:.06em}
+.badge.warn{color:var(--warn);border-color:rgba(230,178,90,.5)}
+
+/* 入力フォームのセクション */
+.tabs{display:flex;gap:26px;border-bottom:1px solid var(--line);margin:20px 0 18px}
+.tabs button{background:none;border:0;padding:11px 2px;color:var(--sub);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:600;letter-spacing:.06em}
+.tabs button.on{color:var(--gold-hi);border-color:var(--gold)}
+details.sec{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:14px;margin-top:14px;overflow:hidden}
+details.sec>summary{list-style:none;display:flex;align-items:center;gap:14px;padding:16px 18px;cursor:pointer}
+details.sec>summary::-webkit-details-marker{display:none}
+.sec .no{font:800 26px/1 var(--serif);font-style:italic;color:var(--gold);min-width:34px}
+.sec .tt{flex:1;font:700 18px/1.3 var(--serif)}
+.sec .tt small{display:block;font:11px/1 ui-monospace,Menlo,monospace;letter-spacing:.22em;color:var(--sub);margin-bottom:5px}
+.sec .cnt{font-size:12px;color:var(--sub)}
+.sec .cnt.full{color:var(--gold)}
+.sec>summary::after{content:"＋";color:var(--gold);font-size:18px}
+.sec[open]>summary::after{content:"－"}
+.sec .body{padding:0 18px 20px;border-top:1px solid var(--line2)}
+.two{display:grid;gap:0 14px}
+@media(min-width:640px){.two{grid-template-columns:1fr 1fr}}
+.note{font-size:12px;color:var(--sub);margin-top:6px}
+.note.warn{color:var(--warn)}
+
+/* 撮影対象 */
+.item{border:1px solid var(--line2);border-radius:10px;padding:13px;margin-top:11px;background:var(--field)}
+.item .top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.item .nm{font-weight:700;flex:1;font-family:var(--serif);font-size:16px}
+.item .pc{color:var(--gold);font-size:13px}
+.item p{margin:6px 0 0;color:var(--sub);white-space:pre-wrap;font-size:14px}
+.kind{font-size:11px;padding:2px 9px;border-radius:99px;border:1px solid var(--line);color:var(--gold);white-space:nowrap}
+.star{color:var(--gold-hi)}
+.thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.thumb{position:relative;width:84px;height:84px;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:var(--panel2);display:block}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .x{position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;border:0;background:rgba(0,0,0,.7);color:#fff;cursor:pointer;line-height:22px;padding:0}
+.thumb .st{position:absolute;left:0;right:0;bottom:0;font-size:10px;text-align:center;background:rgba(0,0,0,.65);color:#fff}
+.filebtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px dashed var(--gold);color:var(--gold);padding:10px 15px;border-radius:8px;font-weight:600;margin:0}
+.filebtn input{display:none}
+.empty{color:var(--sub);padding:18px 0;font-size:14px}
+.actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;align-items:center}
+
+/* 編集者ビュー（案件カルテ） */
+.card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:16px;padding:24px 20px}
+.k .store{font:800 clamp(30px,8vw,48px)/1.25 var(--serif);margin:12px 0 4px}
+.k .catch{font:500 clamp(16px,4.4vw,20px)/1.6 var(--serif);color:var(--gold-hi)}
+.k .meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.k .blk{margin-top:26px}
+.k .blk>.eyebrow{display:flex;align-items:center;gap:12px}
+.k .blk>.eyebrow::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+.k dl{margin:10px 0 0;display:grid;grid-template-columns:8.5em 1fr;gap:9px 14px}
+.k dt{color:var(--sub);font-size:13px}
+.k dd{margin:0;white-space:pre-wrap;word-break:break-word}
+@media(max-width:520px){.k dl{grid-template-columns:1fr;gap:0}.k dd{margin-bottom:10px}}
+.k .lead{font-size:16px;white-space:pre-wrap;margin:8px 0 0}
+.k .cat{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));margin-top:12px}
+.k .cat .item{margin:0}
+.k .thumb{width:calc(50% - 4px);height:auto;aspect-ratio:1}
+
+.toast{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--gold-grad);color:#1a1206;font-weight:700;padding:10px 18px;border-radius:99px;font-size:14px;z-index:50;max-width:90vw}
+.dock{position:fixed;left:0;right:0;bottom:0;background:rgba(11,10,9,.92);backdrop-filter:blur(10px);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom));z-index:15}
+.dock .in{max-width:820px;margin:0 auto;display:flex;gap:12px;align-items:center}
+.dock .msg{flex:1;font-size:12.5px;color:var(--sub);line-height:1.45}
+.bad{border-color:var(--err)!important;box-shadow:0 0 0 3px rgba(240,138,128,.25)!important}
+.vidbar{display:flex;align-items:center;gap:12px;background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:12px;padding:12px 14px;margin-bottom:4px}
+.vidbar .note{margin-top:2px}
+.diag{white-space:pre-wrap;word-break:break-all;font:11px/1.6 ui-monospace,Menlo,Consolas,monospace;color:var(--sub);background:var(--field);border:1px solid var(--line2);border-radius:8px;padding:10px;margin-top:10px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body data-open-case="<?= c ?>">
+<svg class="swoosh" id="swoosh" viewBox="0 0 860 520" preserveAspectRatio="xMaxYMax slice" aria-hidden="true">
+  <defs>
+    <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7a5a1a"/><stop offset=".45" stop-color="#e9c765"/><stop offset="1" stop-color="#8f6a1f"/></linearGradient>
+    <linearGradient id="g2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity=".0"/><stop offset=".5" stop-color="#cfcfcf" stop-opacity=".35"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></linearGradient>
+  </defs>
+  <path d="M528 0 C528 120 470 250 330 325 C228 380 150 440 98 520 L84 520 C138 430 226 366 326 296 C452 208 512 112 510 0 Z" fill="url(#g1)"/>
+  <path d="M540 0 C548 150 490 262 356 345 C262 402 190 460 150 520 L100 520 C150 448 236 394 338 330 C470 246 542 130 534 0 Z" fill="url(#g2)"/>
+</svg>
+<div id="app"></div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+/* =========================================================
+   ワザモノworks 案件カルテ
+   ・入力は1文字ごとに端末へ自動保存（別ページに移動しても消えない）
+   ・スプレッドシートへは自動で同期。失敗しても端末側に残り、再送する
+   ========================================================= */
+const ITEM_KINDS = ['料理','ドリンク','物販','その他'];
+const SALES = ['工藤','井出','坂尻','その他'];
+const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };
+
+/* 入力項目の定義（k = スプレッドシートの列見出しになる） */
+const SECTIONS = [
+  { id:'basic', no:'01', en:'BASIC', title:'基本情報', open:true, fields:[
+    { k:'案件ステータス', t:'chips', opts:['商談中','獲得','稼働中','保留'], def:'獲得' },
+    { k:'店舗名', t:'text', ph:'例：季節の食堂', req:1 },
+    { k:'業態・ジャンル', t:'text', ph:'例：カジュアルフレンチ／ラーメン／美容室', half:1 },
+    { k:'エリア・住所', t:'text', ph:'例：大阪市北区…', half:1 },
+    { k:'営業担当', t:'chips', opts:SALES },
+    { k:'獲得日', t:'date', def:today, half:1 },
+    { k:'先方ご担当者', t:'text', ph:'例：オーナー 山田様', half:1 },
+    { k:'先方の連絡先', t:'text', ph:'電話・LINE・メールなど' },
+    { k:'公式アカウント・URL', t:'area', ph:'Instagram / HP / 食べログ / Googleマップなど' },
+  ]},
+  { id:'plan', no:'02', en:'CONTRACT', title:'契約・プラン', open:true, fields:[
+    { k:'プラン内容', t:'text', ph:'例：リール2本・画像28投稿',
+      presets:['リール1本・画像15','リール2本・画像15','リール2本・画像28投稿','リール4本・画像15','画像カラグレ納品のみ'] },
+    { k:'撮影期間', t:'text', ph:'例：4か月に一回',
+      presets:['毎月','3か月に一回','4か月に一回','半年に1回','未定'] },
+    { k:'打ち合わせ必須', t:'toggle', label:'撮影前に打ち合わせが必須' },
+    { k:'契約開始・期間', t:'text', ph:'例：2026年11月〜／3ヶ月運用その後未定', half:1 },
+    { k:'月額・金額', t:'text', ph:'例：月額○○円（税別）', half:1 },
+    { k:'支払い条件', t:'text', ph:'例：月末締め翌月末払い／請求書払い' },
+    { k:'広告運用', t:'toggle', label:'広告運用を行う' },
+    { k:'広告予算・方針', t:'text', ph:'例：広告1日1000円／月予算15万円',
+      presets:['広告なし','広告1日500円','広告1日1000円'] },
+  ]},
+  { id:'hear', no:'03', en:'HEARING', title:'ヒアリング内容', open:true, fields:[
+    { k:'現在の課題・お悩み', t:'area', ph:'例：新規のお客様が少ない／SNSの更新が止まっている' },
+    { k:'この案件のゴール', t:'multi', opts:['新規集客','リピート','認知拡大','ブランディング','採用','EC・物販','予約増','その他'] },
+    { k:'ターゲット層', t:'area', ph:'例：30〜40代の会社員、記念日利用の20代カップル' },
+    { k:'店舗の強み・こだわり', t:'area', ph:'例：炭火で仕上げる旬魚、目の前で伝わるライブ感' },
+    { k:'世界観・トーン', t:'multi', opts:['高級感','カジュアル','シズル感','温かみ','クール','ポップ','和','洋','ナチュラル'] },
+    { k:'トーン補足・参考イメージ', t:'area', ph:'イメージに近い雰囲気、色、BGMなど' },
+    { k:'競合・参考にしたいアカウント', t:'area', ph:'@アカウント名 や URL' },
+    { k:'投稿の希望', t:'multi', opts:['リール','画像投稿','ストーリーズ','ハイライト','固定投稿','動画編集','文字入れ'] },
+    { k:'NG・避けたいこと', t:'area', ph:'例：顔出しNG／価格の表記NG／他店比較NG' },
+  ]},
+  { id:'shoot', no:'04', en:'SHOOTING', title:'撮影の準備', open:false, fields:[
+    { k:'初回撮影日', t:'date', half:1 },
+    { k:'次回撮影', t:'date', half:1 },
+    { k:'撮影できる曜日・時間帯', t:'text', ph:'例：定休日の月曜 14〜17時／営業前 10時〜' },
+    { k:'撮影場所・駐車場', t:'text', ph:'例：店内＋外観。近くにコインパーキングあり' },
+    { k:'当日の立会い者', t:'text', ph:'例：店長 佐藤様' },
+    { k:'撮影当日の注意', t:'area', ph:'例：営業中のため音は控えめに／提供できる食材は3品まで' },
+  ]},
+  { id:'acct', no:'05', en:'ACCOUNT', title:'アカウント・素材', open:false, fields:[
+    { k:'Instagram ID', t:'text', ph:'例：kisetsu_shokudo' },
+    { k:'ログイン（ID/PASS）', t:'area', ph:'SNSなどのIDとパスワード',
+      hint:'※ パスワードはスプレッドシートに文字のまま残ります。共有範囲にご注意ください。', warn:1 },
+    { k:'ロゴ・素材の受け取り', t:'text', ph:'例：ロゴはメールで受領済み／メニュー表は次回撮影時' },
+  ]},
+  { id:'memo', no:'06', en:'MEMO', title:'商談メモ・編集者への共有', open:true, fields:[
+    { k:'商談メモ・経緯', t:'area', tall:1, ph:'商談で聞いたこと、決まったこと、先方の反応など自由に' },
+    { k:'次のアクション', t:'area', ph:'例：10/5までに契約書送付／撮影日程を電話で確定' },
+    { k:'店舗キャッチコピー', t:'text', ph:'例：旬を、ほどよく、毎日の食卓へ。' },
+    { k:'この案件で最も伝えること', t:'area', ph:'例：炭火で仕上げる旬魚と、目の前で伝わるライブ感' },
+    { k:'編集者へのひとこと', t:'area', ph:'編集上の補足（トーン・NG・参考など）' },
+  ]},
+  { id:'video', no:'07', en:'VIDEO', title:'動画編集の依頼', open:false, fields:[
+    { k:'編集月', t:'month', def:() => today().slice(0, 7), half:1 },
+    { k:'動画の納期', t:'date', half:1 },
+    { k:'動画の種類', t:'multi', opts:['シンプル訴求','問題解決型リール','その他'] },
+    { k:'冒頭フレーズ・テロップ指定', t:'area', ph:'例：冒頭「¥4,100から楽しめるフルコース」／テロップ：明朝体・横' },
+    { k:'参考動画URL', t:'area', ph:'参考にしたい動画のURL' },
+    { k:'素材の格納先URL', t:'text', ph:'Dropbox などの素材フォルダURL' },
+    { k:'担当D', t:'text', ph:'例：忍', half:1 },
+    { k:'担当者', t:'text', ph:'例：ワザモノ', half:1 },
+    { k:'編集担当', t:'text', ph:'決まっていれば' },
+    { k:'動画管理表への登録', t:'videoreg' },
+  ]},
+];
+const dataFields = sec => sec.fields.filter(f => f.t !== 'videoreg');
+const ALL_FIELDS = SECTIONS.flatMap(dataFields);
+const F_STORE = '店舗名';
+
+const $ = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const APP_VER = '2026-09-30 r3';
+function showFatal(msg){
+  let el = document.getElementById('fatal');
+  if (!el) { el = document.createElement('div'); el.id = 'fatal'; el.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:99;background:#5a1d18;color:#fff;padding:10px 14px;font-size:13px;line-height:1.5'; document.body.appendChild(el); }
+  el.innerHTML = '画面でエラーが起きました：' + esc(msg) + ' <button onclick="location.reload()" style="margin-left:8px;padding:3px 10px">再読み込み</button>';
+}
+addEventListener('error', e => showFatal(e.message || 'error'));
+addEventListener('unhandledrejection', e => { const m = (e.reason && e.reason.message) || String(e.reason); if (!/idb (timeout|dead)/.test(m)) showFatal(m); });
+const MARK = (cls='') => `<div class="mark ${cls}"><span class="co">合同会社</span><span class="wz">ワザモノ</span><span class="wk">w<svg class="ap" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke-width="2.2"/><path stroke-width="1.5" d="M12 2.5l3.6 6.2M21.4 8.5l-7.2.3M19 18.6l-3.6-6.2M9 21.4l3.3-6.2M2.6 15.5l5.9-3.4M4.6 5.4l6.5 3.6"/></svg>rks</span></div>`;
+
+/* ---------- 端末内ストレージ (IndexedDB + localStorage ミラー) ---------- */
+const idb = (() => {
+  let dbp;
+  const open = () => dbp || (dbp = new Promise((res, rej) => {
+    if (!window.indexedDB) return rej(new Error('no idb'));
+    const r = indexedDB.open('wazamono-karte', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv');
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  }));
+  let dead = false;   // iPhoneのSafariやLINE内ブラウザでは、保存先への接続が固まることがある。一度でも固まったら以後は使わない
+  const guard = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => { dead = true; rej(new Error('idb timeout')); }, ms))]);
+  const run = (mode, fn) => dead ? Promise.reject(new Error('idb dead')) : guard(open().then(db => new Promise((res, rej) => {
+    const t = db.transaction('kv', mode); const q = fn(t.objectStore('kv'));
+    t.oncomplete = () => res(q && q.result); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+  })), 1500);
+  return {
+    get: k => run('readonly', s => s.get(k)).then(v => v ?? null).catch(() => null),
+    set: (k, v) => run('readwrite', s => s.put(v, k)).catch(() => {}),
+    del: k => run('readwrite', s => s.delete(k)).catch(() => {}),
+    keys: () => run('readonly', s => s.getAllKeys()).catch(() => []),
+    isDead: () => dead,
+  };
+})();
+const ls = {
+  get(k){ try { return JSON.parse(localStorage.getItem('wk:' + k)); } catch (e) { return null; } },
+  set(k, v){ try { localStorage.setItem('wk:' + k, JSON.stringify(v)); } catch (e) {} },
+  del(k){ try { localStorage.removeItem('wk:' + k); } catch (e) {} },
+  keys(){ try { return Object.keys(localStorage).filter(k => k.startsWith('wk:')).map(k => k.slice(3)); } catch (e) { return []; } },
+};
+
+/* ---------- サーバー呼び出し ---------- */
+const S = { pw:'', editor:'', drafts:new Map(), cur:null, tab:'input', list:[], listErr:'', q:'', syncing:new Set(), timers:{}, open:{} };
+
+// 別サイト（通常のWebページ）として開かれたときの送信先。Apps Script のウェブアプリURL
+const API_URL = 'https://script.google.com/macros/s/AKfycbyhr1J5-K6iPV4olcpgemqWwccTytvqUy0I70VE3w5ZlaedXBjRrf9cn5UsnFdIBOF7/exec';
+const USE_MOCK = /[?&]mock=1/.test(location.search);   // 手元で画面だけ試すとき（?mock=1、パスワードは test）
+
+function api(fn, arg){
+  const call = new Promise((resolve, reject) => {
+    const done = r => {
+      if (r && r.ok) resolve(r.data);
+      else { const e = new Error((r && r.error) || 'error'); e.code = r && r.error; reject(e); }
+    };
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      google.script.run.withSuccessHandler(done)
+        .withFailureHandler(e => reject(new Error((e && e.message) || String(e))))
+        .rpc(fn, S.pw, arg);
+    } else if (API_URL && !USE_MOCK) {
+      // 通常のWebページから送る。Googleアカウントの状態に左右されない（複数ログイン中のスマホでも開ける）
+      fetch(API_URL, { method: 'POST', body: JSON.stringify({ fn, pw: S.pw, arg }) })
+        .then(r => r.json())
+        .then(done, e => reject(new Error('サーバーに接続できません（' + ((e && e.message) || e) + '）')));
+    } else {
+      mockRpc(fn, S.pw, arg).then(done, reject);   // ローカルで画面だけ試すとき
+    }
+  });
+  const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('通信がタイムアウトしました（電波の良い場所で再度お試しください）')), 45000));
+  return Promise.race([call, timeout]);
+}
+
+/* ローカル確認用の疑似サーバー（Apps Script 上では使われません。パスワードは test） */
+async function mockRpc(fn, pw, arg){
+  await wait(250);
+  if (pw !== 'test') return { ok:false, error:'auth' };
+  const db = ls.get('mockdb') || { cases:{}, items:{} };
+  const now = new Date().toISOString().replace('T',' ').slice(0,19).replace(/-/g,'/');
+  let data = null;
+  if (fn === 'login') data = { mode: 'test' };
+  else if (fn === 'listCases') data = Object.values(db.cases).filter(c => c.state !== '削除')
+    .map(c => ({ id:c.id, storeName:c.fields['店舗名'], status:c.fields['案件ステータス'], sales:c.fields['営業担当'], catchcopy:c.fields['店舗キャッチコピー'], updatedAt:c.updatedAt, updatedBy:c.updatedBy, itemCount:(db.items[c.id]||[]).length }))
+    .sort((a,b) => b.updatedAt.localeCompare(a.updatedAt));
+  else if (fn === 'getCase') data = db.cases[arg] && db.cases[arg].state !== '削除' ? { case:{ id:arg, fields:db.cases[arg].fields, updatedAt:db.cases[arg].updatedAt }, items:db.items[arg] || [], video:db.cases[arg].video || null } : null;
+  else if (fn === 'saveCase') {
+    const c = arg.case;
+    db.cases[c.id] = { id:c.id, fields:c.fields, state:'進行中', updatedAt:now, updatedBy:arg.editor || '' };
+    const prev = db.cases[c.id] && db.cases[c.id].video;
+    db.cases[c.id].video = prev || null;
+    let videoError = '';
+    if (!prev && arg.registerVideo) db.cases[c.id].video = { sheet:'動画管理表_テスト', name:'01｜' + (c.fields['店舗名'] || '') + ' ｜' + (c.fields['動画の納期'] || '').replace(/-/g, '') };
+    db.items[c.id] = arg.items; ls.set('mockdb', db); data = { updatedAt: now, video: db.cases[c.id].video, videoError };
+  }
+  else if (fn === 'uploadPhoto') data = { url: arg.dataUrl };
+  else if (fn === 'deleteCase') { if (db.cases[arg]) db.cases[arg].state = '削除'; ls.set('mockdb', db); data = true; }
+  return { ok:true, data };
+}
+
+/* ---------- 下書き（自動保存の本体） ---------- */
+function newForm(kind){ return { name:'', kind:kind || ITEM_KINDS[0], price:'', note:'', star:'', photos:[], editingId:null }; }
+function newDraft(){
+  const id = uid('C'), fields = {};
+  ALL_FIELDS.forEach(f => {
+    const v = typeof f.def === 'function' ? f.def() : f.def;
+    fields[f.k] = v || '';
+  });
+  if (SALES.includes(S.editor)) fields['営業担当'] = S.editor;
+  return { id, case:{ id, fields }, items:[], video:null, form:newForm(), dirty:false, baseUpdatedAt:null, rev:0, ts:Date.now(), local:true };
+}
+const formEmpty = f => !f.name.trim() && !f.note.trim() && !f.price.trim() && !f.photos.length;
+const storeName = d => (d.case.fields[F_STORE] || '').trim();
+const hasContent = d => !!(storeName(d) || d.items.length);
+
+function stripPhotos(d){        // localStorage ミラー用：写真データ本体は除く
+  const c = JSON.parse(JSON.stringify(d));
+  c.items.forEach(i => i.photos = i.photos.filter(p => p.url));
+  c.form.photos = [];
+  return c;
+}
+function persistNow(d){
+  d.ts = Date.now();
+  ls.set('draft:' + d.id, stripPhotos(d));     // 同期書き込み：ページを閉じる瞬間でも残る
+  idb.set('draft:' + d.id, d);                 // 写真を含む完全版
+}
+function persistSoon(d){
+  clearTimeout(S.timers['p' + d.id]);
+  S.timers['p' + d.id] = setTimeout(() => persistNow(d), 250);
+}
+function flushAll(){ S.drafts.forEach(d => { clearTimeout(S.timers['p' + d.id]); persistNow(d); }); }
+addEventListener('pagehide', flushAll);
+addEventListener('beforeunload', flushAll);
+document.addEventListener('visibilitychange', () => { if (document.hidden) { flushAll(); S.drafts.forEach(d => d.dirty && sync(d)); } else syncAll(); });
+addEventListener('online', () => syncAll());
+
+async function loadLocalDraft(id){
+  if (S.drafts.has(id)) return S.drafts.get(id);
+  const a = await idb.get('draft:' + id), b = ls.get('draft:' + id);
+  const d = (a && b) ? (a.ts >= b.ts ? a : b) : (a || b);
+  if (d) S.drafts.set(id, d);
+  return d || null;
+}
+async function localDraftIds(){
+  const ids = new Set();
+  (await idb.keys()).forEach(k => String(k).startsWith('draft:') && ids.add(String(k).slice(6)));
+  ls.keys().forEach(k => k.startsWith('draft:') && ids.add(k.slice(6)));
+  return [...ids];
+}
+
+/* ---------- 同期 ---------- */
+function setStatus(d, st, msg){ d.status = st; d.statusMsg = msg || ''; if (S.cur === d) paintStatus(); }
+function markDirty(d){
+  d.dirty = true; d.rev++; d.local = d.local && !d.baseUpdatedAt;
+  persistSoon(d);
+  setStatus(d, hasContent(d) ? 'dirty' : 'local');
+  syncSoon(d, 1500);
+}
+function syncSoon(d, ms){ clearTimeout(S.timers['s' + d.id]); S.timers['s' + d.id] = setTimeout(() => sync(d), ms); }
+async function sync(d){
+  if (!d.dirty) return;
+  if (!hasContent(d)) { setStatus(d, 'local'); return; }
+  if (S.syncing.has(d.id)) { d.again = true; return; }
+  if (!navigator.onLine) { setStatus(d, 'error', 'オフライン。端末に保存済み。回線が戻ると自動で送ります'); return; }
+  S.syncing.add(d.id); setStatus(d, 'saving');
+  const rev = d.rev;
+  try {
+    for (const it of d.items) for (const p of it.photos) {
+      if (!p.url && p.dataUrl) {
+        const r = await api('uploadPhoto', { name: p.name || (p.id + '.jpg'), dataUrl: p.dataUrl });
+        p.url = r.url; delete p.dataUrl; persistNow(d);
+      }
+    }
+    const payload = {
+      case: { id:d.id, fields:d.case.fields }, editor: S.editor, registerVideo: !!d.wantRegister,
+      items: d.items.map(i => ({ id:i.id, kind:i.kind, name:i.name, price:i.price || '', note:i.note, star:i.star || '', photos:i.photos.filter(p => p.url).map(p => ({ id:p.id, url:p.url })) })),
+    };
+    const r = await api('saveCase', payload);
+    d.baseUpdatedAt = r.updatedAt; d.local = false;
+    if (d.rev === rev) { d.dirty = false; setStatus(d, 'saved'); } else d.again = true;
+    if (r.video) d.video = r.video;
+    if (d.wantRegister) { d.wantRegister = false; if (r.video && !r.videoError) toast(S.mode === 'test' ? '「動画管理表_テスト」タブに登録しました（本番の月別タブにはまだ入りません）' : '動画管理表に登録しました'); }
+    if (r.videoError) { toast('保存OK。ただし動画管理表への反映に失敗: ' + r.videoError); const ve = $('#viderr'); if (ve) ve.textContent = r.videoError; }
+    if (S.cur === d) paintVideo();
+    persistNow(d);
+  } catch (e) {
+    if (e.code === 'auth') { logout(true); return; }
+    setStatus(d, 'error', '送信に失敗（端末には保存済み）: ' + e.message);
+    clearTimeout(d.retry); d.retry = setTimeout(() => sync(d), 20000);
+  } finally {
+    S.syncing.delete(d.id);
+    if (d.again) { d.again = false; syncSoon(d, 300); }
+  }
+}
+async function syncAll(){
+  if (!S.pw) return;
+  for (const id of await localDraftIds()) { const d = await loadLocalDraft(id); if (d && d.dirty) sync(d); }
+}
+
+/* ---------- 起動・ログイン ---------- */
+const auth = { get(){ try { return JSON.parse(localStorage.getItem('wk:auth')) || {}; } catch (e) { return {}; } },
+               set(v){ try { localStorage.setItem('wk:auth', JSON.stringify(v)); } catch (e) {} },
+               clear(){ try { localStorage.removeItem('wk:auth'); } catch (e) {} } };
+function swoosh(strong){ const el = $('#swoosh'); el.classList.toggle('strong', !!strong); el.setAttribute('preserveAspectRatio', strong ? 'none' : 'xMaxYMax slice'); }
+function logout(expired){ S.pw = ''; auth.clear(); renderLogin(expired ? 'パスワードが変わったようです。もう一度入力してください。' : ''); }
+async function boot(){
+  const a = auth.get();
+  const open = (document.body.dataset.openCase || '').trim() || (new URLSearchParams(location.search).get('c') || '').trim();      // ?c=案件ID で開かれたとき
+  if (/^C[0-9a-z]+$/.test(open)) location.hash = '#/case/' + open + '/view';
+  if (a.pw) {
+    S.pw = a.pw; S.editor = a.editor || '';
+    api('login').then(info => { S.mode = info && info.mode; if (S.cur) { paintVideo(); paintStatus(); } }).catch(e => { if (e.code === 'auth') logout(true); });
+    route(); syncAll();
+  }
+  else renderLogin('');
+  addEventListener('hashchange', route);
+}
+function renderLogin(err){
+  S.cur = null; swoosh(true);
+  $('#app').innerHTML = `
+  <div class="login">
+    <div class="head">
+      ${MARK()}
+      <h1>案件を、<br><span class="gold">獲得したその場で</span>、<br>残す。</h1>
+      <p class="lead">商談で聞いたことも、撮影したい商品も、写真も。入力した内容は自動でスプレッドシートに溜まります。</p>
+      <div class="form">
+        <label for="lpw">チーム用パスワード</label>
+        <input class="ul" id="lpw" type="password" autocomplete="current-password" placeholder="パスワードを入力">
+        <label for="lname">お名前（更新者として記録・任意）</label>
+        <input class="ul" id="lname" type="text" placeholder="例：工藤" value="${esc(auth.get().editor || '')}">
+        <div class="err" id="lerr">${esc(err)}</div>
+        <div class="actions"><button class="btn" id="lgo" style="min-width:160px">入る</button></div>
+        <div style="margin-top:22px"><button class="link" id="ldiag" style="text-decoration:underline">うまく動かないとき（接続診断）</button></div>
+        <div class="diag" id="diag" hidden></div>
+      </div>
+    </div>
+    <div class="foot">WAZAMONO WORKS</div>
+  </div>`;
+  const submit = async () => {
+    const pw = $('#lpw').value, name = $('#lname').value.trim();
+    if (!pw) return;
+    $('#lgo').disabled = true; $('#lerr').textContent = '';
+    S.pw = pw; S.editor = name;
+    try { const info = await api('login'); S.mode = info && info.mode; auth.set({ pw, editor:name }); if (!/^#\/case\//.test(location.hash)) location.hash = '#/'; route(); syncAll(); }
+    catch (e) { S.pw = ''; $('#lgo').disabled = false; $('#lerr').textContent = e.code === 'auth' ? 'パスワードが違います。' : e.code === 'locked' ? '間違いが続いたため、10分ほど受け付けを止めています。時間をおいてお試しください。' : '接続できません: ' + e.message; }
+  };
+  $('#lgo').onclick = submit;
+  $('#ldiag').onclick = runDiag;
+  $('#lpw').onkeydown = e => { if (e.key === 'Enter') submit(); };
+}
+
+/* ---------- 接続診断（「開けない」「保存されない」の原因の切り分け用。画面を見せてもらえば分かる） ---------- */
+async function runDiag(){
+  const el = $('#diag'); el.hidden = false; const L = [];
+  const put = t => { L.push(t); el.textContent = L.join('\n'); };
+  put('版: ' + APP_VER);
+  put('ブラウザ: ' + navigator.userAgent.replace(/Mozilla.5.0 /, '').slice(0, 110));
+  put('通信: ' + (navigator.onLine ? 'オンライン' : 'オフライン'));
+  try { localStorage.setItem('wk:diag', '1'); put('端末内保存(簡易): ' + (localStorage.getItem('wk:diag') === '1' ? 'OK' : '読み書きできません')); localStorage.removeItem('wk:diag'); }
+  catch (e) { put('端末内保存(簡易): 使えません（' + (e.name || 'error') + '）→ 入力は自動送信のみで守られます'); }
+  const t0 = Date.now();
+  try { await idb.set('diag', 1); const v = await idb.get('diag'); await idb.del('diag'); put('端末内保存(大容量): ' + (v === 1 && !idb.isDead() ? 'OK' : '使えません（写真の下書きは端末に残りません）') + ' ' + (Date.now() - t0) + 'ms'); }
+  catch (e) { put('端末内保存(大容量): 使えません'); }
+  const t1 = Date.now();
+  try { await api('login'); put('サーバー: 応答あり'); }
+  catch (e) { put(e.code === 'auth' ? 'サーバー: 応答あり（' + (Date.now() - t1) + 'ms）' : 'サーバー: 接続できません（' + e.message + '）'); }
+  put('※ この画面のスクリーンショットを送ってください');
+}
+
+/* ---------- ルーティング ---------- */
+function route(){
+  if (!S.pw) return renderLogin('');
+  const m = location.hash.match(/^#\/case\/([^/]+)(?:\/(view))?/);
+  if (m) openCase(m[1], m[2] === 'view' ? 'view' : 'input');
+  else renderList();
+}
+const go = h => { location.hash = h; };
+
+/* ---------- 一覧 ---------- */
+async function renderList(){
+  S.cur = null; swoosh(false);
+  $('#app').innerHTML = `
+  <div class="bar"><div class="in">
+    <span style="width:64px"></span><div class="mid">${MARK('sm')}</div>
+    <button class="link" id="lout">ログアウト</button>
+  </div></div>
+  <div class="wrap">
+    <div class="hero"><div class="eyebrow">CASE KARTE</div><h2>案件カルテ</h2></div>
+    <div class="actions" style="margin-top:14px">
+      <button class="btn" id="lnew">＋ 新しい案件を入力</button>
+      <button class="btn ghost" id="lrefresh">更新</button>
+    </div>
+    <input class="search" id="lq" placeholder="店舗名で探す" value="${esc(S.q)}">
+    <div id="lbody"><div class="empty">読み込み中…</div></div>
+  </div>`;
+  $('#lout').onclick = () => { if (confirm('ログアウトしますか？（端末内の未送信データは残ります）')) logout(); };
+  $('#lnew').onclick = () => { const d = newDraft(); S.drafts.set(d.id, d); persistNow(d); go('#/case/' + d.id); };
+  $('#lrefresh').onclick = () => renderList();
+  $('#lq').oninput = e => { S.q = e.target.value; paintList(); };
+  const cached = await idb.get('list');
+  if (cached && !S.list.length) S.list = cached;
+  paintList();
+  try { S.list = await api('listCases'); S.listErr = ''; idb.set('list', S.list); }
+  catch (e) { if (e.code === 'auth') return logout(true); S.listErr = '最新の一覧を取得できませんでした（' + e.message + '）'; }
+  if (!S.cur && ($('#lbody'))) paintList();
+}
+async function paintList(){
+  const el = $('#lbody'); if (!el) return;
+  const rows = new Map(S.list.map(c => [c.id, { ...c }]));
+  for (const id of await localDraftIds()) {          // 端末内の未送信データも一覧に出す
+    const d = await loadLocalDraft(id);
+    if (!d || !hasContent(d)) continue;
+    if (d.dirty || !rows.has(id)) rows.set(id, { id, storeName:storeName(d), status:d.case.fields['案件ステータス'], sales:d.case.fields['営業担当'], catchcopy:d.case.fields['店舗キャッチコピー'], itemCount:d.items.length, updatedAt:'', unsent:d.dirty });
+  }
+  const q = S.q.trim().toLowerCase();
+  const arr = [...rows.values()].filter(c => !q || (c.storeName || '').toLowerCase().includes(q))
+    .sort((a, b) => (b.unsent ? 1 : 0) - (a.unsent ? 1 : 0) || (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+  el.innerHTML = (S.listErr ? `<div class="err">${esc(S.listErr)}</div>` : '') +
+    (arr.length ? arr.map(c => `
+      <button class="row" data-id="${esc(c.id)}">
+        <div class="n">${esc(c.storeName || '（店舗名未入力）')}${c.status ? `<span class="badge">${esc(c.status)}</span>` : ''}${c.unsent ? '<span class="badge warn">未送信</span>' : ''}</div>
+        ${c.catchcopy ? `<div class="m serif">${esc(c.catchcopy)}</div>` : ''}
+        <div class="m">${c.sales ? '営業 ' + esc(c.sales) + ' ・ ' : ''}撮影対象 ${c.itemCount || 0} 件${c.updatedAt ? ' ・ ' + esc(c.updatedAt) : ''}${c.updatedBy ? ' ・ ' + esc(c.updatedBy) : ''}</div>
+      </button>`).join('') : `<div class="empty">${q ? '該当する案件がありません。' : 'まだ案件がありません。「新しい案件を入力」から始めてください。'}</div>`);
+  $$('.row', el).forEach(b => b.onclick = () => go('#/case/' + b.dataset.id));
+}
+
+/* ---------- 案件画面 ---------- */
+async function openCase(id, tab){
+  S.tab = tab;
+  if (S.cur && S.cur.id === id) { renderCase(); return; }
+  swoosh(false);
+  $('#app').innerHTML = '<div class="wrap"><div class="empty" style="padding-top:40px">読み込み中…</div></div>';
+  let d = await loadLocalDraft(id);
+  const useLocal = d && (d.dirty || !formEmpty(d.form) || d.local);
+  if (!useLocal) {
+    try {
+      const r = await api('getCase', id);
+      if (!r) { alert('この案件は見つかりませんでした'); return go('#/'); }
+      const fresh = newDraft().case.fields;
+      Object.keys(fresh).forEach(k => fresh[k] = r.case.fields[k] ?? '');
+      d = { id, case:{ id, fields:fresh }, items:r.items, video:r.video || null, form:(d && d.form) || newForm(), dirty:false, baseUpdatedAt:r.case.updatedAt, rev:0, ts:Date.now(), local:false };
+      S.drafts.set(id, d); persistNow(d);
+    } catch (e) {
+      if (e.code === 'auth') return logout(true);
+      if (!d) { $('#app').innerHTML = `<div class="wrap"><p class="err">読み込めませんでした: ${esc(e.message)}</p><button class="btn" onclick="location.hash='#/'">一覧へ</button></div>`; return; }
+    }
+  }
+  S.cur = d; if (!d.status) d.status = d.dirty ? 'dirty' : 'saved';
+  renderCase();
+  if (d.dirty) syncSoon(d, 500);
+}
+function paintStatus(){
+  const mt = $('#modetag'); if (mt) mt.hidden = S.mode !== 'test';
+  const d = S.cur, el = $('#status'); if (!d || !el) return;
+  const t = { saved:'保存済み', dirty:'入力中…', saving:'送信中…', local:'店舗名で保存', error:'未送信' }[d.status] || '';
+  el.className = 'stat ' + d.status; el.textContent = t;
+  const m = $('#fmsg');
+  if (m) m.textContent = d.statusMsg || (d.status === 'saved' ? 'スプレッドシートに保存されました。' : d.status === 'local' ? '店舗名を入力すると、スプレッドシートへの保存が始まります。' : '入力内容は自動で端末とスプレッドシートに保存されます。');
+}
+function renderCase(){
+  const d = S.cur;
+  $('#app').innerHTML = `
+  <div class="bar"><div class="in">
+    <button class="link" id="back">← 一覧</button>
+    <div class="mid">${MARK('sm')}</div>
+    <span class="stat" id="status"></span>
+  </div><div class="prog"><i id="prog"></i></div></div>
+  <div class="wrap">
+    <div class="tabs">
+      <button data-t="input" class="${S.tab === 'input' ? 'on' : ''}">入力</button>
+      <button data-t="view" class="${S.tab === 'view' ? 'on' : ''}">案件カルテ</button>
+      <span id="modetag" class="badge warn" style="margin:0 0 0 auto;align-self:center" hidden>テスト運用中</span>
+    </div>
+    <div id="pane"></div>
+  </div>
+  <div class="dock"><div class="in">
+    <div class="msg" id="fmsg"></div>
+    <button class="btn" id="save">今すぐ保存</button>
+  </div></div>`;
+  $('#back').onclick = () => { flushAll(); if (d.dirty) sync(d); go('#/'); };
+  $$('.tabs button').forEach(b => b.onclick = () => go('#/case/' + d.id + (b.dataset.t === 'view' ? '/view' : '')));
+  $('#save').onclick = async () => {
+    clearTimeout(S.timers['s' + d.id]);
+    if (!hasContent(d)) return toast('店舗名を入力してください');
+    d.dirty = true; await sync(d); if (d.status === 'saved') toast('保存しました');
+  };
+  S.tab === 'input' ? renderInput() : renderView();
+  paintStatus();
+}
+
+/* ---- 入力タブ ---- */
+const getV = (sc, k) => sc === 'f' ? (S.cur.case.fields[k] ?? '') : (S.cur.form[k] ?? '');
+function fieldHtml(f, sc = 'f'){
+  const v = getV(sc, f.k), a = `data-s="${sc}" data-k="${esc(f.k)}"`;
+  const lab = `<label>${esc(f.k)}${f.req ? '<b>必須</b>' : ''}</label>`;
+  const hint = f.hint ? `<div class="note ${f.warn ? 'warn' : ''}">${esc(f.hint)}</div>` : '';
+  let h = '';
+  if (f.t === 'text') h = `${lab}${f.presets ? `<div class="presets">${f.presets.map(p => `<button type="button" class="pr ${p === v ? 'on' : ''}" ${a} data-v="${esc(p)}">${esc(p)}</button>`).join('')}</div>` : ''}<input ${a} placeholder="${esc(f.ph || '')}" value="${esc(v)}">${hint}`;
+  else if (f.t === 'area') h = `${lab}<textarea class="${f.tall ? 'tall' : ''}" ${a} placeholder="${esc(f.ph || '')}">${esc(v)}</textarea>${hint}`;
+  else if (f.t === 'date' || f.t === 'month') h = `${lab}<input type="${f.t}" ${a} value="${esc(v)}">`;
+  else if (f.t === 'videoreg') h = '<div id="videoreg" style="margin-top:18px"></div>';
+  else if (f.t === 'chips' || f.t === 'multi') {
+    const sel = f.t === 'multi' ? v.split('、').filter(Boolean) : [v];
+    h = `<div class="lb">${esc(f.k)}</div><div class="chips" ${a} data-m="${f.t}">${f.opts.map(o => `<button type="button" class="cb ${sel.includes(o) ? 'on' : ''}" data-v="${esc(o)}">${esc(o)}</button>`).join('')}</div>${hint}`;
+  }
+  else if (f.t === 'toggle') h = `<button type="button" class="tog ${v === 'はい' ? 'on' : ''}" ${a}><span class="t">${esc(f.label)}</span><i></i></button>`;
+  return f.half ? `<div>${h}</div>` : h;
+}
+function groupHalves(fields){
+  let out = '', buf = [];
+  const flush = () => { if (buf.length) { out += `<div class="two">${buf.join('')}</div>`; buf = []; } };
+  fields.forEach(f => { if (f.half) buf.push(fieldHtml(f)); else { flush(); out += fieldHtml(f); } });
+  flush(); return out;
+}
+function itemFormHtml(){
+  const f = S.cur.form, ed = !!f.editingId;
+  return `
+    <div class="eyebrow" style="margin-top:16px">${ed ? '撮影対象を編集' : '撮影対象を追加'}</div>
+    ${fieldHtml({ k:'name', t:'text', ph:'料理・ドリンク・物販などの名前' }, 'i').replace(/<label>name<\/label>/, '<label>名前</label>')}
+    ${fieldHtml({ k:'kind', t:'chips', opts:ITEM_KINDS }, 'i').replace('>kind<', '>種別<')}
+    <div class="two"><div>${fieldHtml({ k:'price', t:'text', ph:'例：1,280円' }, 'i').replace('<label>price</label>', '<label>価格</label>')}</div>
+    <div>${fieldHtml({ k:'star', t:'toggle', label:'看板・イチオシ' }, 'i')}</div></div>
+    ${fieldHtml({ k:'note', t:'area', ph:'この商品の概要・見せたい点（シズル、断面、提供シーンなど）' }, 'i').replace('<label>note</label>', '<label>概要・見せたい点</label>')}
+    <div class="thumbs" id="fphotos"></div>
+    <div class="actions">
+      <label class="filebtn">📷 写真を選ぶ<input type="file" accept="image/*" multiple id="pick"></label>
+      <button class="btn" data-a="add">${ed ? '更新' : '追加'}</button>
+      ${ed ? '<button class="btn ghost" data-a="cancel">編集をやめる</button>' : ''}
+    </div>
+    <div class="err" id="ferr"></div>`;
+}
+function renderInput(){
+  const d = S.cur;
+  $('#pane').innerHTML = '<div id="vidbar" class="vidbar"></div>' + SECTIONS.map(sec => `
+    <details class="sec" data-sec="${sec.id}" ${(S.open[sec.id] ?? sec.open) ? 'open' : ''}>
+      <summary><span class="no">${sec.no}</span><span class="tt"><small>${sec.en}</small>${sec.title}</span><span class="cnt" data-cnt="${sec.id}"></span></summary>
+      <div class="body">${groupHalves(sec.fields)}</div>
+    </details>`).join('') + `
+    <details class="sec" data-sec="items" ${(S.open.items ?? true) ? 'open' : ''}>
+      <summary><span class="no">08</span><span class="tt"><small>PRODUCTS</small>撮影対象</span><span class="cnt" data-cnt="items"></span></summary>
+      <div class="body"><div id="itemform">${itemFormHtml()}</div><div id="items"></div></div>
+    </details>
+    <div class="actions" style="justify-content:center;margin-top:26px"><button class="btn danger small" data-a="del">この案件を削除</button></div>`;
+  const pane = $('#pane');
+  pane.ontoggle = e => { if (e.target.dataset && e.target.dataset.sec) S.open[e.target.dataset.sec] = e.target.open; };
+  pane.querySelectorAll('details').forEach(el => el.addEventListener('toggle', () => { S.open[el.dataset.sec] = el.open; }));
+  pane.oninput = onInput; pane.onchange = onChange; pane.onclick = onClick;
+  paintFormPhotos(); paintItems(); paintCounts(); paintVideo();
+}
+function setV(sc, k, v){
+  const d = S.cur;
+  if (sc === 'f') {
+    d.case.fields[k] = v;
+    if (k === '編集月') d.monthTouched = true;   // 手で直したら、以後は自動でそろえない
+    if (k === '動画の納期' && v && !d.monthTouched) {  // 納期の月に編集月をそろえる（別の月のタブに入らないように）
+      d.case.fields['編集月'] = v.slice(0, 7);
+      const mi = $('input[data-s="f"][data-k="編集月"]'); if (mi) mi.value = v.slice(0, 7);
+    }
+    markDirty(d); paintCounts();
+  }
+  else { d.form[k] = v; d.ts = Date.now(); persistSoon(d); }
+}
+function onInput(e){
+  const t = e.target; if (!t.dataset || !t.dataset.s || t.type === 'file') return;
+  setV(t.dataset.s, t.dataset.k, t.value);
+  if (t.tagName === 'INPUT') $$(`.pr[data-k="${CSS.escape(t.dataset.k)}"]`).forEach(b => b.classList.toggle('on', b.dataset.v === t.value));
+}
+function onChange(e){
+  const t = e.target;
+  if (t.id === 'pick') return pickPhotos(t);
+  if (t.type === 'date' || t.type === 'month') setV(t.dataset.s, t.dataset.k, t.value);
+}
+function onClick(e){
+  const b = e.target.closest('button'); if (!b) return;
+  const d = S.cur;
+  if (b.classList.contains('cb')) {
+    const wrap = b.parentElement, sc = wrap.dataset.s, k = wrap.dataset.k, v = b.dataset.v, multi = wrap.dataset.m === 'multi';
+    let cur = getV(sc, k);
+    if (multi) { const arr = cur.split('、').filter(Boolean); const i = arr.indexOf(v); i >= 0 ? arr.splice(i, 1) : arr.push(v); cur = arr.join('、'); }
+    else cur = cur === v ? '' : v;
+    setV(sc, k, cur);
+    const sel = multi ? cur.split('、') : [cur];
+    $$('.cb', wrap).forEach(x => x.classList.toggle('on', sel.includes(x.dataset.v)));
+  }
+  else if (b.classList.contains('pr')) {
+    const sc = b.dataset.s, k = b.dataset.k, on = b.classList.contains('on'), v = on ? '' : b.dataset.v;
+    setV(sc, k, v);
+    const inp = $(`input[data-s="${sc}"][data-k="${CSS.escape(k)}"]`); if (inp) inp.value = v;
+    $$(`.pr[data-k="${CSS.escape(k)}"]`).forEach(x => x.classList.toggle('on', x.dataset.v === v));
+  }
+  else if (b.classList.contains('tog')) {
+    const sc = b.dataset.s, k = b.dataset.k, v = getV(sc, k) === 'はい' ? '' : 'はい';
+    setV(sc, k, v); b.classList.toggle('on', v === 'はい');
+  }
+  else if (b.classList.contains('x')) { d.form.photos = d.form.photos.filter(p => p.id !== b.dataset.p); persistNow(d); paintFormPhotos(); }
+  else if (b.dataset.a === 'add') addItem();
+  else if (b.dataset.a === 'cancel') { d.form = newForm(d.form.kind); persistNow(d); $('#itemform').innerHTML = itemFormHtml(); paintFormPhotos(); paintItems(); }
+  else if (b.dataset.a === 'regvideo') regVideo();
+  else if (b.dataset.a === 'vidgo') { const m = videoMissing(S.cur); m.length ? openVideoSection(m[0]) : regVideo(); }
+  else if (b.dataset.a === 'del') deleteCase();
+}
+function paintCounts(){
+  const d = S.cur; let filled = 0, total = 0;
+  SECTIONS.forEach(sec => {
+    const df = dataFields(sec), n = df.filter(f => (d.case.fields[f.k] || '').trim()).length;
+    filled += n; total += df.length;
+    const el = $(`[data-cnt="${sec.id}"]`); if (el) { el.textContent = n + ' / ' + df.length; el.classList.toggle('full', n === df.length); }
+  });
+  const ic = $('[data-cnt="items"]'); if (ic) ic.textContent = d.items.length + ' 件';
+  const p = $('#prog'); if (p) p.style.width = Math.round(filled / total * 100) + '%';
+  paintVidbar();
+}
+function paintFormPhotos(){
+  const el = $('#fphotos'); if (!el) return;
+  el.innerHTML = S.cur.form.photos.map(p => `
+    <div class="thumb">${p.busy ? '' : `<img src="${esc(thumb(p))}" alt="">`}<button class="x" data-p="${p.id}" aria-label="写真を外す">×</button>${p.busy ? '<div class="st">処理中</div>' : ''}</div>`).join('');
+}
+async function pickPhotos(input){
+  const d = S.cur, files = [...input.files]; input.value = '';
+  for (const file of files) {
+    const p = { id: uid('P'), name: file.name.replace(/\.[^.]+$/, '') + '.jpg', busy: true };
+    d.form.photos.push(p); paintFormPhotos();
+    try { p.dataUrl = await compress(file); }
+    catch (err) { d.form.photos = d.form.photos.filter(x => x !== p); const fe = $('#ferr'); if (fe) fe.textContent = '写真を読み込めませんでした'; }
+    delete p.busy; persistNow(d); paintFormPhotos();
+  }
+}
+function paintItems(){
+  const d = S.cur, el = $('#items'); if (!el) return;
+  paintCounts();
+  el.innerHTML = d.items.length ? d.items.map(i => `
+    <div class="item" data-id="${i.id}">
+      <div class="top"><span class="nm">${i.star ? '<span class="star">★</span> ' : ''}${esc(i.name)}</span>${i.price ? `<span class="pc">${esc(i.price)}</span>` : ''}<span class="kind">${esc(i.kind)}</span></div>
+      ${i.note ? `<p>${esc(i.note)}</p>` : ''}
+      ${i.photos.length ? `<div class="thumbs">${i.photos.map(p => `<div class="thumb"><img src="${esc(thumb(p))}" alt="">${!p.url ? '<div class="st">未送信</div>' : ''}</div>`).join('')}</div>` : ''}
+      <div class="actions" style="margin-top:10px"><button class="btn ghost small" data-ia="edit">編集</button><button class="btn danger small" data-ia="rm">削除</button></div>
+    </div>`).join('') : '<div class="empty">撮影したい商品を追加すると、案件カルテでの見え方を確認できます。</div>';
+  $$('[data-ia]', el).forEach(b => b.onclick = () => {
+    const id = b.closest('.item').dataset.id, it = d.items.find(x => x.id === id);
+    if (b.dataset.ia === 'rm') { if (confirm('「' + it.name + '」を削除しますか？')) { d.items = d.items.filter(x => x.id !== id); markDirty(d); paintItems(); } }
+    else { d.form = { name:it.name, kind:it.kind, price:it.price || '', note:it.note, star:it.star || '', photos:it.photos.map(p => ({ ...p })), editingId:id }; persistNow(d); $('#itemform').innerHTML = itemFormHtml(); paintFormPhotos(); $('#itemform').scrollIntoView({ behavior:'smooth', block:'start' }); }
+  });
+}
+function addItem(){
+  const d = S.cur, f = d.form, fe = $('#ferr'); fe.textContent = '';
+  if (f.photos.some(p => p.busy)) return (fe.textContent = '写真の処理が終わるまでお待ちください');
+  if (!f.name.trim()) return (fe.textContent = '名前を入力してください');
+  const item = { id: f.editingId || uid('I'), kind:f.kind, name:f.name.trim(), price:f.price.trim(), note:f.note.trim(), star:f.star, photos:f.photos.map(p => ({ ...p })) };
+  if (f.editingId) d.items = d.items.map(i => i.id === f.editingId ? item : i); else d.items.push(item);
+  d.form = newForm(f.kind);
+  markDirty(d); persistNow(d);
+  $('#itemform').innerHTML = itemFormHtml(); paintFormPhotos(); paintItems();
+}
+async function deleteCase(){
+  const d = S.cur;
+  if (!confirm('この案件を削除しますか？（スプレッドシート上は「削除」扱いで残ります）')) return;
+  try { if (d.baseUpdatedAt) await api('deleteCase', d.id); } catch (e) { return alert('削除できませんでした: ' + e.message); }
+  d.dirty = false; S.drafts.delete(d.id); idb.del('draft:' + d.id); ls.del('draft:' + d.id); S.cur = null; S.list = S.list.filter(c => c.id !== d.id); go('#/');
+}
+
+/* ---- 動画管理表への登録 ---- */
+function videoMissing(d){
+  const f = d.case.fields, m = [];
+  if (!storeName(d)) m.push('店舗名');
+  if (!f['編集月']) m.push('編集月');
+  if (!f['動画の納期']) m.push('動画の納期');
+  return m;
+}
+function openVideoSection(k){
+  const sec = $('[data-sec="video"]');
+  const el = k ? $('[data-s="f"][data-k="' + CSS.escape(k) + '"]') : sec;
+  const det = (el && el.closest) ? el.closest('details') : sec;
+  if (det) { det.open = true; S.open[det.dataset.sec] = true; }
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (k) { el.classList.add('bad'); setTimeout(() => el.classList.remove('bad'), 3500); if (el.focus) el.focus({ preventScroll: true }); }
+}
+function paintVidbar(){
+  const el = $('#vidbar'), d = S.cur; if (!el || !d) return;
+  const test = S.mode === 'test';
+  if (d.video) {
+    el.innerHTML = `<div style="flex:1"><div class="eyebrow">VIDEO SHEET</div><div style="color:var(--ok);font-weight:600">✅ 動画管理表に登録済み</div><div class="note">${esc(d.video.sheet)} ／ ${esc(d.video.name)}</div></div>`;
+    return;
+  }
+  const miss = videoMissing(d);
+  el.innerHTML = `<div style="flex:1"><div class="eyebrow">VIDEO SHEET${test ? ' · TEST' : ''}</div><div style="font-weight:600">動画管理表には、まだ入っていません</div><div class="note">${test ? 'テスト運用中：「動画管理表_テスト」タブに入ります。' : '編集月のタブの末尾に1行入ります。'}${miss.length ? '（あと：' + esc(miss.join('、')) + '）' : ''}</div></div><button class="btn small" data-a="vidgo">${miss.length ? '入力へ' : '登録する'}</button>`;
+}
+function paintVideo(){
+  const el = $('#videoreg'), d = S.cur; if (!el || !d) return;
+  const test = S.mode === 'test';
+  el.innerHTML = d.video
+    ? `<div class="note" style="color:var(--ok)">✅ 登録済み：${esc(d.video.sheet)}<br>${esc(d.video.name)}<br>以降の変更（納期・店舗・備考・格納先・担当）は、変えた項目だけ自動で反映されます。</div>`
+    : `<div class="note">${test ? 'いまはテスト運用です。「動画管理表_テスト」タブに1行追加されます（本番の月別タブには入りません）。' : '編集月に合わせた「動画管理表_YYYY.M」タブの末尾に、1行追加されます。'}</div>
+       <div class="err" id="viderr"></div>
+       <div class="actions"><button class="btn" data-a="regvideo">動画管理表に依頼を登録</button></div>`;
+  paintVidbar();
+}
+async function regVideo(){
+  const d = S.cur, f = d.case.fields, miss = videoMissing(d);
+  if (miss.length) {
+    const msg = '登録に必要な項目が未入力です：' + miss.join('、');
+    openVideoSection(miss[0]);
+    const ve = $('#viderr'); if (ve) ve.textContent = msg;
+    return toast(msg);
+  }
+  const where = S.mode === 'test' ? '「動画管理表_テスト」タブ' : '「動画管理表_' + f['編集月'].replace('-0', '.').replace('-', '.') + '」タブ';
+  if (!confirm(where + 'の末尾に、次の1行を追加します。\n\n店舗：' + storeName(d) + '\n納期：' + f['動画の納期'] + '\n\nよろしいですか？')) return;
+  d.wantRegister = true; d.dirty = true; clearTimeout(S.timers['s' + d.id]);
+  await sync(d);
+}
+
+/* ---- 案件カルテ（読む用の画面） ---- */
+const VIEW_BLOCKS = [
+  ['基本情報', ['業態・ジャンル','エリア・住所','営業担当','獲得日','先方ご担当者','先方の連絡先','公式アカウント・URL']],
+  ['契約・プラン', ['プラン内容','撮影期間','打ち合わせ必須','契約開始・期間','月額・金額','支払い条件','広告運用','広告予算・方針']],
+  ['ヒアリング', ['現在の課題・お悩み','この案件のゴール','ターゲット層','店舗の強み・こだわり','世界観・トーン','トーン補足・参考イメージ','競合・参考にしたいアカウント','投稿の希望','NG・避けたいこと']],
+  ['動画編集の依頼', ['編集月','動画の納期','動画の種類','冒頭フレーズ・テロップ指定','参考動画URL','素材の格納先URL','担当D','担当者','編集担当']],
+  ['撮影の準備', ['初回撮影日','次回撮影','撮影できる曜日・時間帯','撮影場所・駐車場','当日の立会い者','撮影当日の注意']],
+  ['アカウント・素材', ['Instagram ID','ログイン（ID/PASS）','ロゴ・素材の受け取り']],
+  ['商談メモ', ['商談メモ・経緯','次のアクション']],
+];
+function renderView(){
+  const d = S.cur, v = d.case.fields, show = k => (v[k] || '').trim();
+  const blocks = VIEW_BLOCKS.map(([t, ks]) => [t, ks.filter(show)]).filter(b => b[1].length);
+  const kinds = ITEM_KINDS.map(k => [k, d.items.filter(i => i.kind === k)]).filter(g => g[1].length);
+  const ph = t => `<span style="color:var(--sub)">${t}</span>`;
+  $('#pane').innerHTML = `
+  <div class="card k">
+    <div class="eyebrow">CASE KARTE</div>
+    <div class="store">${esc(show(F_STORE)) || ph('店舗名を入力')}</div>
+    <div class="catch">${esc(show('店舗キャッチコピー'))}</div>
+    <div class="meta">${show('案件ステータス') ? `<span class="badge" style="margin:0">${esc(v['案件ステータス'])}</span>` : ''}${v['打ち合わせ必須'] ? '<span class="badge warn" style="margin:0">打ち合わせ必須</span>' : ''}${show('プラン内容') ? `<span class="badge" style="margin:0">${esc(v['プラン内容'])}</span>` : ''}</div>
+    ${show('この案件で最も伝えること') ? `<div class="blk"><div class="eyebrow">最も伝えること</div><p class="lead serif">${esc(v['この案件で最も伝えること'])}</p></div>` : ''}
+    ${show('編集者へのひとこと') ? `<div class="blk"><div class="eyebrow">編集者へのひとこと</div><p class="lead">${esc(v['編集者へのひとこと'])}</p></div>` : ''}
+    ${blocks.map(([t, ks]) => `<div class="blk"><div class="eyebrow">${t}</div><dl>${ks.map(k => `<dt>${esc(k)}</dt><dd>${esc(v[k])}</dd>`).join('')}</dl></div>`).join('')}
+    <div class="blk"><div class="eyebrow">撮影対象カタログ</div>
+      ${kinds.length ? kinds.map(([k, arr]) => `
+        <h3 style="margin-top:16px;font-size:18px">${k}<span class="badge">${arr.length}</span></h3>
+        <div class="cat">${arr.map(i => `
+          <div class="item"><div class="top"><span class="nm">${i.star ? '<span class="star">★</span> ' : ''}${esc(i.name)}</span>${i.price ? `<span class="pc">${esc(i.price)}</span>` : ''}</div>
+          ${i.note ? `<p>${esc(i.note)}</p>` : ''}
+          ${i.photos.length ? `<div class="thumbs">${i.photos.map(p => `<a class="thumb" ${p.url && /^https?:/.test(p.url) ? `href="${esc(p.url)}" target="_blank" rel="noopener"` : ''}><img src="${esc(thumb(p))}" alt=""></a>`).join('')}</div>` : ''}
+          </div>`).join('')}</div>`).join('') : '<div class="empty">入力画面から撮影対象を追加してください。</div>'}
+    </div>
+    <div class="actions" style="margin-top:26px"><button class="btn ghost" id="copy">📋 テキストでコピー（LINE共有用）</button></div>
+  </div>`;
+  $('#copy').onclick = copyText;
+}
+function copyText(){
+  const d = S.cur, v = d.case.fields, L = [];
+  L.push('【' + (v[F_STORE] || '店舗名未入力') + '】' + (v['案件ステータス'] ? '（' + v['案件ステータス'] + '）' : ''));
+  if (v['店舗キャッチコピー']) L.push(v['店舗キャッチコピー']);
+  VIEW_BLOCKS.forEach(([t, ks]) => {
+    const rows = ks.filter(k => k !== 'ログイン（ID/PASS）' && (v[k] || '').trim()); if (!rows.length) return;
+    L.push('', '■' + t); rows.forEach(k => L.push(k + '：' + v[k]));
+  });
+  ['この案件で最も伝えること','編集者へのひとこと'].forEach(k => { if ((v[k] || '').trim()) L.push('', '■' + k, v[k]); });
+  if (d.items.length) { L.push('', '■撮影対象'); d.items.forEach(i => L.push((i.star ? '★' : '・') + i.name + '（' + i.kind + (i.price ? '／' + i.price : '') + '）' + (i.note ? ' ' + i.note.replace(/\n/g, ' ') : ''))); }
+  const text = L.join('\n');
+  const fallback = () => { const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); toast('コピーしました'); } catch (e) { toast('コピーできませんでした'); } t.remove(); };
+  navigator.clipboard ? navigator.clipboard.writeText(text).then(() => toast('コピーしました（ログイン情報は含みません）'), fallback) : fallback();
+}
+
+/* ---------- 写真 ---------- */
+function thumb(p){
+  if (p.dataUrl) return p.dataUrl;
+  const m = p.url && p.url.match(/\/d\/([\w-]+)/) || p.url && p.url.match(/[?&]id=([\w-]+)/);
+  return m ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w600` : (p.url || '');
+}
+function compress(file, max = 1600, q = 0.82){
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const r = Math.min(1, max / Math.max(img.width, img.height));
+      const cv = document.createElement('canvas'); cv.width = Math.round(img.width * r); cv.height = Math.round(img.height * r);
+      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height); URL.revokeObjectURL(url);
+      res(cv.toDataURL('image/jpeg', q));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('load')); };
+    img.src = url;
+  });
+}
+function toast(t){ const el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 2400); }
+
+boot();
+</script>
+</body>
+</html>
