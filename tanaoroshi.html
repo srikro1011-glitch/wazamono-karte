@@ -56,7 +56,7 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 .stat.dirty,.stat.saving,.stat.off{color:var(--warn);border-color:rgba(230,178,90,.45)}
 .stat.error,.stat.none{color:var(--err);border-color:rgba(240,138,128,.5)}
 .tabs{display:flex;gap:4px;width:100%;border-top:1px solid var(--line2);padding-top:8px}
-.tab{flex:1;background:none;border:0;border-radius:8px;padding:9px 2px;color:var(--sub);cursor:pointer;font-weight:600;letter-spacing:.02em;font-size:13.5px}
+.tab{flex:1;background:none;border:0;border-radius:8px;padding:9px 0;color:var(--sub);cursor:pointer;font-weight:600;letter-spacing:0;font-size:13px;white-space:nowrap}
 .tab.on{color:#1a1206;background:var(--gold-grad)}
 
 .hero{padding:22px 0 4px}
@@ -132,6 +132,18 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 .mr .eq .v{font-weight:700;font-size:16px}
 .mr .eq .v.big{color:var(--gold-hi);font-size:20px;font-family:var(--serif)}
 
+/* 価格 */
+.pr{border:1px solid var(--line2);border-radius:10px;background:var(--field);margin-top:10px;padding:10px 12px}
+.pr .top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pr .top .n{font-weight:700;flex:1;min-width:0;overflow-wrap:anywhere}
+.pr .cur{font-size:12.5px;color:var(--gold-hi);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pr .cur.none{color:var(--warn)}
+.pr .g{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px}
+@media(min-width:600px){.pr .g{grid-template-columns:1.2fr .8fr 1fr 1fr auto}}
+.pr .g input,.pr .g select{padding:8px 9px;font-size:15px}
+.pr .g label{margin:0 0 3px;font-size:11px}
+.pr .hist{font-size:12px;color:var(--sub);margin-top:6px;font-variant-numeric:tabular-nums}
+.pr .btn{align-self:end}
 /* 書き出し・設定 */
 .card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
 .card h3{font-size:17px}
@@ -155,6 +167,7 @@ th{color:var(--gold);font-weight:600}
   <div class="tabs" role="tablist">
     <button class="tab on" data-v="reg" role="tab">棚の登録</button>
     <button class="tab" data-v="count" role="tab">棚卸し</button>
+    <button class="tab" data-v="price" role="tab">価格</button>
     <button class="tab" data-v="out" role="tab">書き出し</button>
     <button class="tab" data-v="cfg" role="tab">設定</button>
   </div>
@@ -177,7 +190,7 @@ const UNITS = ['パック','本','袋','箱','ケース','缶','kg','g','個','�
 const CONV_UNITS = ['g','個','ml','尾','枚'];
 const KEY = 'tana:v2';
 const POLL_MS = 30000;
-const APP_VER = '2026-10-12 r2';
+const APP_VER = '2026-10-12 r3';
 
 const $ = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => [...r.querySelectorAll(s)];
@@ -190,7 +203,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 
 /* ---------- 初期データ：鯛ドロボー（理想と現実のFシートのレシピ単価＋8月MRシートの品目から） ---------- */
 function seedTai(){
-  const it = (name, unit, conv, convUnit, price, vendor, star, memo, tare) => ({ id:uid('i'), name, unit, conv, convUnit, price, vendor, star:!!star, memo:memo||'', tare:tare||null, photo:null });
+  const it = (name, unit, conv, convUnit, price, vendor, star, memo, tare) => ({ id:uid('i'), name, unit, conv, convUnit, price, vendor, star:!!star, memo:memo||'', tare:tare||null, photo:null, buyUnit:unit, pack:1, prices: price != null ? [{ id:uid('q'), date:'2026-08-01', buyUnit:unit, pack:1, price, tax:'抜', vendor:'', memo:'レシピマスターの単価' }] : [] });
   return {
     note:'配置は仮です。10/20 の棚卸しで現地に合わせて直してください。単価はレシピマスターの仕入れ単価（8月時点）。',
     locations:[
@@ -268,6 +281,13 @@ const cur = () => DB.stores[S.store];
 const shelfNo = (loc, sh) => loc.code + '-' + String(sh.no).padStart(2, '0');
 const allItems = st => st.locations.flatMap(l => l.shelves.flatMap(s => s.items.map(i => ({ loc:l, shelf:s, item:i }))));
 const lastCount = st => st.counts.length ? st.counts[st.counts.length - 1] : null;
+/* 価格：item.prices = [{id,date,buyUnit,pack,price,tax,vendor,memo}] を履歴で持つ。円/数える単位 ＝ 価格 ÷ 入数 */
+const sortP = ps => ps.slice().sort((a, b) => (a.date || '') < (b.date || '') ? -1 : (a.date || '') > (b.date || '') ? 1 : 0);
+const latestP = i => i.prices && i.prices.length ? sortP(i.prices)[i.prices.length - 1] : null;
+const unitPrice = (pr, fallback) => pr ? (num(pr.price) == null ? null : num(pr.price) / (num(pr.pack) > 0 ? num(pr.pack) : 1)) : (fallback ?? null);
+const priceOf = i => unitPrice(latestP(i), i.price);
+const priceAt = (i, date) => { if (!i.prices || !i.prices.length) return i.price ?? null; const ps = sortP(i.prices).filter(p => !p.date || !date || p.date <= date); return ps.length ? unitPrice(ps[ps.length - 1]) : unitPrice(sortP(i.prices)[0]); };
+const fmtP = pr => !pr ? '' : `${yen(pr.price)}/${esc(pr.buyUnit || '単位')}${num(pr.pack) > 1 ? `（${pr.pack}入）` : ''}${pr.tax === '込' ? '税込' : ''}${pr.date ? `・${esc(pr.date)}` : ''}`;
 const isWeighed = i => (i.unit === 'g' || i.unit === 'kg') && num(i.tare) > 0;
 const netQty = (i, raw) => { const r = num(raw); if (r == null) return null; if (!isWeighed(i)) return r; const g = Math.max(0, r - num(i.tare)); return i.unit === 'kg' ? g / 1000 : g; };
 
@@ -375,7 +395,7 @@ function boot(){
   pull(S.store);
 }
 function setView(v){ S.view = v; $$('.tab').forEach(x => x.classList.toggle('on', x.dataset.v === v)); render(); }
-function render(){ ({ reg:renderReg, count:renderCount, out:renderOut, cfg:renderCfg })[S.view](); setNet(S.net, S.netMsg); if (window.claude) $$('[data-act="dl"]').forEach(b => b.hidden = true); }
+function render(){ ({ reg:renderReg, count:renderCount, price:renderPrice, out:renderOut, cfg:renderCfg })[S.view](); setNet(S.net, S.netMsg); if (window.claude) $$('[data-act="dl"]').forEach(b => b.hidden = true); }
 const thumb = p => !p ? '' : p.dataUrl ? p.dataUrl : (p.url && (p.url.match(/\/d\/([\w-]+)/) || p.url.match(/[?&]id=([\w-]+)/))) ? `https://drive.google.com/thumbnail?id=${(p.url.match(/\/d\/([\w-]+)/) || p.url.match(/[?&]id=([\w-]+)/))[1]}&sz=w400` : (p.url || '');
 
 /* --- 棚の登録 --- */
@@ -423,7 +443,7 @@ function shelfHtml(loc, sh){
       ${sh.items.map(i => `<div class="it" data-item="${i.id}">
         ${i.photo ? `<img class="ph" src="${esc(thumb(i.photo))}" alt="">` : '<span class="ph none">写真なし</span>'}
         <div class="n">${i.star ? '<span class="star">★</span>' : ''}${esc(i.name)}</div>
-        <div class="d">${esc(i.unit)}${i.conv ? `・1${esc(i.unit)}＝${i.conv}${esc(i.convUnit)}` : ''}${i.price != null ? `・${yen(i.price)}/${esc(i.unit)}` : '・<span style="color:var(--warn)">単価未入力</span>'}${num(i.tare) > 0 ? `・風袋${i.tare}g` : ''}${i.vendor ? `・${esc(i.vendor)}` : ''}${i.memo ? `　${esc(i.memo)}` : ''}</div>
+        <div class="d">${esc(i.unit)}${i.conv ? `・1${esc(i.unit)}＝${i.conv}${esc(i.convUnit)}` : ''}${priceOf(i) != null ? `・${yen(priceOf(i))}/${esc(i.unit)}` : '・<span style="color:var(--warn)">価格未入力</span>'}${num(i.tare) > 0 ? `・風袋${i.tare}g` : ''}${i.vendor ? `・${esc(i.vendor)}` : ''}${i.memo ? `　${esc(i.memo)}` : ''}</div>
         <div class="ops"><button class="ic" data-act="edit-item" title="編集">✎</button>${delBtn('item', i.id)}</div>
       </div>`).join('') || '<div class="empty">品目なし</div>'}
       ${editing ? itemForm(S.form) : `<div class="actions"><button class="btn ghost sm" data-act="new-item">＋ 品目を追加</button></div>`}
@@ -443,13 +463,24 @@ function itemForm(f){
     <div class="three">
       <div><label>1単位＝</label><input id="f-conv" inputmode="decimal" value="${f.conv ?? ''}" placeholder="例：600"></div>
       <div><label>換算の単位</label><select id="f-convu">${CONV_UNITS.map(u => `<option ${f.convUnit === u ? 'selected' : ''}>${u}</option>`).join('')}</select></div>
-      <div><label>仕入れ値（円 / 1単位）</label><input id="f-price" inputmode="decimal" value="${f.price ?? ''}" placeholder="例：3240"></div>
-    </div>
-    <div class="three">
       <div><label>風袋（容器の重さ g）</label><input id="f-tare" inputmode="decimal" value="${f.tare ?? ''}" placeholder="例：バット 420"></div>
+    </div>
+    <div class="two">
       <div><label>仕入れ先</label><input id="f-vendor" value="${esc(f.vendor)}" placeholder="例：魚福"></div>
       <div><label>メモ</label><input id="f-memo" value="${esc(f.memo)}" placeholder="例：1ケース何個か要確認"></div>
     </div>
+    <label>仕入れ価格（分かる範囲で。あとから「価格」タブでまとめて入れられます）</label>
+    <div class="three">
+      <div><label>仕入れ単位</label><select id="f-buyunit">${UNITS.map(u => `<option ${(f.buyUnit || f.unit) === u ? 'selected' : ''}>${u}</option>`).join('')}</select></div>
+      <div><label>入数（1仕入れ単位に数える単位が何${esc(f.unit)}）</label><input id="f-pack" inputmode="decimal" value="${f.pack ?? ''}" placeholder="例：12"></div>
+      <div><label>価格（円）</label><input id="f-price" inputmode="decimal" value="${f.newPrice ?? ''}" placeholder="例：3240"></div>
+    </div>
+    <div class="three">
+      <div><label>税</label><div class="chips"><button class="cb ${f.tax !== '込' ? 'on' : ''}" data-act="set-tax" data-t="抜">税抜</button><button class="cb ${f.tax === '込' ? 'on' : ''}" data-act="set-tax" data-t="込">税込</button></div></div>
+      <div><label>適用日</label><input type="date" id="f-pdate" value="${esc(f.newDate || today())}"></div>
+      <div><label>いまの単価</label><div style="padding:9px 0;font-weight:700;color:var(--gold-hi)">${priceOf(f) != null ? yen(priceOf(f)) + '/' + esc(f.unit) : '－'}</div></div>
+    </div>
+    ${f.prices && f.prices.length ? `<div class="note">履歴：${sortP(f.prices).slice(-3).reverse().map(fmtP).join('　/　')}</div>` : ''}
     <div class="actions"><button class="cb ${f.star ? 'on' : ''}" data-act="toggle-star">★ 重点食材（毎回数える）</button></div>
     <div class="note">単位が g か kg で風袋を入れると、棚卸しでは「はかりの表示」をそのまま入れるだけで容器の重さを引きます。換算はレシピ（g・個）とつなぐためのもので、空欄でも金額は出ます。</div>
     <div class="actions"><button class="btn" data-act="save-item">${f.editingId ? '更新' : '追加'}</button><button class="btn ghost" data-act="cancel-item">やめる</button></div>
@@ -462,10 +493,11 @@ function renderCount(){
   if (!S.draftCount) S.draftCount = ls.get('draft:' + S.store) || { date:today(), by:CFG.name || '', qty:{}, purchases:'', sales:'' };
   const d = S.draftCount;
   const q = r => netQty(r.item, d.qty[r.item.id]);
+  const pz = i => priceAt(i, d.date);
   const done = rows.filter(r => q(r) != null).length;
-  const total = rows.reduce((a, r) => a + (q(r) || 0) * (r.item.price || 0), 0);
-  const starTotal = rows.filter(r => r.item.star).reduce((a, r) => a + (q(r) || 0) * (r.item.price || 0), 0);
-  const noPrice = rows.filter(r => r.item.price == null && q(r)).length;
+  const total = rows.reduce((a, r) => a + (q(r) || 0) * (pz(r.item) || 0), 0);
+  const starTotal = rows.filter(r => r.item.star).reduce((a, r) => a + (q(r) || 0) * (pz(r.item) || 0), 0);
+  const noPrice = rows.filter(r => pz(r.item) == null && q(r)).length;
   const prevTotal = last ? last.total : null;
   const pur = num(d.purchases), sales = num(d.sales);
   const cogs = prevTotal != null && pur != null ? prevTotal + pur - total : null;
@@ -476,7 +508,7 @@ function renderCount(){
     grouped += `<div class="shelf"><div class="head"><span class="no">${esc(shelfNo(loc, sh))}</span>${sh.photo ? `<img class="shelfph" src="${esc(thumb(sh.photo))}" alt="">` : ''}<span class="nm" style="cursor:default">${esc(loc.name)}　${esc(sh.name)}</span></div><div class="items">
       ${sh.items.map(i => { const raw = d.qty[i.id] ?? ''; const n = netQty(i, raw); const pv = last && last.qty[i.id]; const w = isWeighed(i); return `<div class="row">
         ${i.photo ? `<img class="ph" src="${esc(thumb(i.photo))}" alt="">` : '<span></span>'}
-        <div><div class="n">${i.star ? '<span class="star">★</span>' : ''}${esc(i.name)}</div><div class="d">${w ? `はかりの表示を入力（風袋 ${i.tare}g を引く）` : esc(i.unit)}${i.price != null ? `・${yen(i.price)}/${esc(i.unit)}` : '・単価未入力'}${pv != null ? `・前回 ${pv}${w ? esc(i.unit) : ''}` : ''}${n != null && w ? `・正味 ${+n.toFixed(3)}${esc(i.unit)}` : ''}${n != null && i.price != null ? `・${yen(n * i.price)}` : ''}</div></div>
+        <div><div class="n">${i.star ? '<span class="star">★</span>' : ''}${esc(i.name)}</div><div class="d">${w ? `はかりの表示を入力（風袋 ${i.tare}g を引く）` : esc(i.unit)}${pz(i) != null ? `・${yen(pz(i))}/${esc(i.unit)}` : '・価格未入力'}${pv != null ? `・前回 ${pv}${w ? esc(i.unit) : ''}` : ''}${n != null && w ? `・正味 ${+n.toFixed(3)}${esc(i.unit)}` : ''}${n != null && pz(i) != null ? `・${yen(n * pz(i))}` : ''}</div></div>
         <input class="${n != null ? 'done' : ''}" data-qty="${i.id}" inputmode="decimal" placeholder="${w ? 'g' : esc(i.unit)}" value="${esc(raw)}" aria-label="${esc(i.name)}の数量">
       </div>`; }).join('')}
     </div></div>`;
@@ -487,7 +519,7 @@ function renderCount(){
     <div class="two"><div><label>棚卸し日</label><input type="date" id="c-date" value="${esc(d.date)}"></div><div><label>数えた人</label><input id="c-by" value="${esc(d.by)}" placeholder="例：水谷"></div></div>
     <div class="sum">
       <div class="tile"><div class="k">入力済み</div><div class="v">${done}<small> / ${rows.length}</small></div><div class="prog"><i style="width:${rows.length ? done / rows.length * 100 : 0}%"></i></div></div>
-      <div class="tile"><div class="k">今回の在庫金額</div><div class="v">${yen(total)}</div>${noPrice ? `<div class="note" style="color:var(--warn)">単価未入力が ${noPrice} 品</div>` : ''}</div>
+      <div class="tile"><div class="k">今回の在庫金額</div><div class="v">${yen(total)}</div>${noPrice ? `<div class="note" style="color:var(--warn)">価格未入力が ${noPrice} 品</div>` : ''}</div>
       <div class="tile"><div class="k">うち ★重点</div><div class="v">${yen(starTotal)}</div></div>
       <div class="tile"><div class="k">前回在庫（${last ? esc(last.date) : 'なし'}）</div><div class="v">${prevTotal != null ? yen(prevTotal) : '－'}</div></div>
     </div>
@@ -508,15 +540,44 @@ function renderCount(){
   `;
 }
 
+/* --- 価格 --- */
+function renderPrice(){
+  const st = cur(); const rows = allItems(st);
+  const miss = rows.filter(r => priceOf(r.item) == null).length;
+  $('#app').innerHTML = `
+    <div class="hero"><div class="eyebrow">PRICES</div><h2>${esc(S.store)}の食材価格</h2>
+      <p>請求書や納品書を見ながら、ここでまとめて入れます。価格は履歴で残るので、値上がりしたら新しい日付で登録してください。棚卸しはその日に有効な価格で金額を出します。${miss ? `<br><span style="color:var(--warn)">価格未入力 ${miss} 品</span>` : ''}</p></div>
+    ${rows.map(({ loc, shelf, item:i }) => { const lp = latestP(i); const cp = priceOf(i); return `<div class="pr" data-pitem="${i.id}">
+      <div class="top"><span class="no">${esc(shelfNo(loc, shelf))}</span><span class="n">${i.star ? '<span class="star">★</span>' : ''}${esc(i.name)}</span><span class="cur ${cp == null ? 'none' : ''}">${cp != null ? yen(cp) + '/' + esc(i.unit) : '未入力'}</span></div>
+      <div class="g">
+        <div><label>仕入れ単位</label><select data-p="buyUnit">${UNITS.map(u => `<option ${(lp ? lp.buyUnit : i.buyUnit || i.unit) === u ? 'selected' : ''}>${u}</option>`).join('')}</select></div>
+        <div><label>入数（${esc(i.unit)}）</label><input data-p="pack" inputmode="decimal" value="${lp ? lp.pack : (i.pack ?? 1)}"></div>
+        <div><label>価格（円）</label><input data-p="price" inputmode="decimal" placeholder="${lp ? lp.price : '例：3240'}"></div>
+        <div><label>適用日</label><input type="date" data-p="date" value="${today()}"></div>
+        <button class="btn sm" data-act="add-price">登録</button>
+      </div>
+      ${i.prices && i.prices.length ? `<div class="hist">履歴：${sortP(i.prices).slice(-3).reverse().map(fmtP).join('　/　')}</div>` : ''}
+    </div>`; }).join('') || '<div class="empty">品目がありません。「棚の登録」で先に品目を作ってください。</div>'}`;
+}
+function addPrice(el){
+  const r = find(el.dataset.pitem); if (!r || !r.it) return;
+  const g = s => $(`[data-p="${s}"]`, el).value;
+  const price = num(g('price')); if (price == null) return toast('価格を入れてください');
+  const pack = num(g('pack')) > 0 ? num(g('pack')) : 1;
+  r.it.prices = r.it.prices || []; r.it.prices.push({ id:uid('q'), date:g('date') || today(), buyUnit:g('buyUnit'), pack, price, tax:'抜', vendor:r.it.vendor || '', memo:'' });
+  r.it.buyUnit = g('buyUnit'); r.it.pack = pack; r.it.price = unitPrice(latestP(r.it));
+  markMaster(); const y = scrollY; render(); scrollTo(0, y); toast(`${r.it.name}：${yen(r.it.price)}/${r.it.unit} で登録しました`);
+}
+
 /* --- 書き出し --- */
 function masterRows(st){
-  const h = ['店舗','場所記号','場所','棚番号','棚名','棚の写真','品目','数える単位','1単位の換算','換算単位','仕入れ値(円/単位)','風袋(g)','仕入れ先','重点','写真','メモ'];
-  const r = allItems(st).map(({ loc, shelf, item }) => [S.store, loc.code, loc.name, shelfNo(loc, shelf), shelf.name, shelf.photo && shelf.photo.url || '', item.name, item.unit, item.conv ?? '', item.convUnit ?? '', item.price ?? '', item.tare ?? '', item.vendor, item.star ? '★' : '', item.photo && item.photo.url || '', item.memo]);
+  const h = ['店舗','場所記号','場所','棚番号','棚名','棚の写真','品目','数える単位','1単位の換算','換算単位','仕入れ単位','入数','仕入れ価格','税','価格の適用日','円/数える単位','風袋(g)','仕入れ先','重点','写真','メモ'];
+  const r = allItems(st).map(({ loc, shelf, item }) => { const lp = latestP(item); return [S.store, loc.code, loc.name, shelfNo(loc, shelf), shelf.name, shelf.photo && shelf.photo.url || '', item.name, item.unit, item.conv ?? '', item.convUnit ?? '', lp ? lp.buyUnit : (item.buyUnit || ''), lp ? lp.pack : (item.pack ?? ''), lp ? lp.price : '', lp ? lp.tax : '', lp ? lp.date : '', priceOf(item) ?? '', item.tare ?? '', item.vendor, item.star ? '★' : '', item.photo && item.photo.url || '', item.memo]; });
   return [h, ...r];
 }
 function countRows(st, c){
-  const h = ['店舗','棚卸し日','数えた人','棚番号','品目','数える単位','数量(正味)','はかり表示','風袋(g)','仕入れ値(円/単位)','金額','重点'];
-  const r = allItems(st).map(({ loc, shelf, item }) => { const q = c.qty[item.id]; const raw = c.qtyRaw && c.qtyRaw[item.id]; return [S.store, c.date, c.by, shelfNo(loc, shelf), item.name, item.unit, q ?? '', raw ?? '', item.tare ?? '', item.price ?? '', q != null && item.price != null ? Math.round(q * item.price) : '', item.star ? '★' : '']; });
+  const h = ['店舗','棚卸し日','数えた人','棚番号','品目','数える単位','数量(正味)','はかり表示','風袋(g)','円/数える単位','金額','重点'];
+  const r = allItems(st).map(({ loc, shelf, item }) => { const q = c.qty[item.id]; const raw = c.qtyRaw && c.qtyRaw[item.id]; const pr = priceAt(item, c.date); return [S.store, c.date, c.by, shelfNo(loc, shelf), item.name, item.unit, q ?? '', raw ?? '', item.tare ?? '', pr ?? '', q != null && pr != null ? Math.round(q * pr) : '', item.star ? '★' : '']; });
   return [h, ...r];
 }
 const tsv = rows => rows.map(r => r.map(v => String(v ?? '').replace(/[\t\r\n]+/g, ' ')).join('\t')).join('\n');
@@ -528,7 +589,7 @@ function renderOut(){
     <div class="hero"><div class="eyebrow">EXPORT</div><h2>${esc(S.store)}の書き出し</h2>
       <p>同期が動いていれば、スプレッドシートの「品目マスタ」「棚卸し」「棚卸し明細」タブに自動で入っています。ここは手で貼りたいときと、別の端末へ引き継ぐときに使います。</p>
       ${S.sheetUrl ? `<p><a href="${esc(S.sheetUrl)}" target="_blank" rel="noopener">同期先のスプレッドシートを開く</a></p>` : ''}</div>
-    <div class="card"><h3>品目マスタ（${m.length - 1}行）</h3><p>棚番号・品目・単位・換算・単価・風袋・写真URL。理想と現実のFの品目表の元になります。</p>
+    <div class="card"><h3>品目マスタ（${m.length - 1}行）</h3><p>棚番号・品目・単位・換算・仕入れ単位と価格・風袋・写真URL。価格の履歴はシートの「価格履歴」タブに入ります。</p>
       ${m.length > 1 ? tableHtml(m) : '<div class="empty">品目がありません</div>'}
       <div class="actions"><button class="btn" data-act="copy" data-what="master">📋 コピー（スプレッドシート用）</button><button class="btn ghost" data-act="dl" data-what="master">CSVをダウンロード</button></div></div>
     <div class="card"><h3>最新の棚卸し ${last ? `（${esc(last.date)}・${yen(last.total)}）` : ''}</h3><p>${last ? '棚番号順の数量と金額。' : 'まだ締めた棚卸しがありません。'}</p>
@@ -594,9 +655,10 @@ function onClick(e){
     case 'shelf-down': move(loc.shelves, loc.shelves.indexOf(sh), 1); markMaster(); render(); break;
     case 'rename-shelf': { const inp = document.createElement('input'); inp.value = sh.name; inp.placeholder = '棚の名前（例：上段・野菜室）'; inp.style.cssText = 'padding:6px 8px;font-size:14px'; b.replaceWith(inp); inp.focus();
       let done = false; const fin = () => { if (done) return; done = true; if (sh.name !== inp.value.trim()) { sh.name = inp.value.trim(); markMaster(); } render(); }; inp.onblur = fin; inp.onkeydown = ev => { if (ev.key === 'Enter') inp.blur(); }; break; }
-    case 'new-item': S.form = { shelf:sh.id, name:'', unit:UNITS[0], conv:'', convUnit:'g', price:'', tare:'', vendor:'', memo:'', star:false, photo:null, editingId:null }; render(); focusForm(); break;
-    case 'edit-item': S.form = { shelf:sh.id, ...it, photo:it.photo ? { ...it.photo } : null, editingId:it.id }; render(); focusForm(); break;
+    case 'new-item': S.form = { shelf:sh.id, name:'', unit:UNITS[0], conv:'', convUnit:'g', price:null, prices:[], buyUnit:UNITS[0], pack:'', newPrice:'', tax:'抜', newDate:today(), tare:'', vendor:'', memo:'', star:false, photo:null, editingId:null }; render(); focusForm(); break;
+    case 'edit-item': { const lp = latestP(it); S.form = { shelf:sh.id, ...it, prices:(it.prices || []).map(p => ({ ...p })), photo:it.photo ? { ...it.photo } : null, buyUnit:it.buyUnit || (lp && lp.buyUnit) || it.unit, pack:it.pack ?? (lp && lp.pack) ?? '', newPrice:'', tax:(lp && lp.tax) || '抜', newDate:today(), editingId:it.id }; render(); focusForm(); break; }
     case 'set-unit': readForm(); S.form.unit = b.dataset.u; render(); break;
+    case 'set-tax': readForm(); S.form.tax = b.dataset.t; render(); break;
     case 'toggle-star': readForm(); S.form.star = !S.form.star; render(); break;
     case 'del-photo': readForm(); S.form.photo = null; render(); break;
     case 'cancel-item': S.form = null; render(); break;
@@ -615,6 +677,7 @@ function onClick(e){
     case 'wipe': DB.stores[S.store] = emptyStore(); DB.stores[S.store].seeded = true; S.confirmId = null; S.draftCount = null; save(); toast('端末から消しました'); render(); pull(S.store); break;
     case 'save-cfg': { CFG.name = $('#g-name').value.trim(); CFG.pw = $('#g-pw').value; const u = $('#g-url'); if (u) CFG.url = u.value.trim(); ls.set('cfg', CFG); toast('保存しました'); pull(S.store); setView('reg'); break; }
     case 'diag': runDiag(); break;
+    case 'add-price': addPrice(b.closest('[data-pitem]')); break;
   }
 }
 function addLoc(code, name){
@@ -625,14 +688,16 @@ function addLoc(code, name){
 function focusForm(){ const el = $('#f-name'); if (el) { el.scrollIntoView({ block:'center' }); el.focus(); } }
 function readForm(){
   const f = S.form; if (!f || !$('#itemform')) return;
-  f.name = $('#f-name').value; f.conv = $('#f-conv').value; f.convUnit = $('#f-convu').value; f.price = $('#f-price').value; f.tare = $('#f-tare').value; f.vendor = $('#f-vendor').value; f.memo = $('#f-memo').value;
+  f.name = $('#f-name').value; f.conv = $('#f-conv').value; f.convUnit = $('#f-convu').value; f.newPrice = $('#f-price').value; f.buyUnit = $('#f-buyunit').value; f.pack = $('#f-pack').value; f.newDate = $('#f-pdate').value; f.tare = $('#f-tare').value; f.vendor = $('#f-vendor').value; f.memo = $('#f-memo').value;
 }
 function saveItem(){
   readForm(); const f = S.form; const name = f.name.trim(); if (!name) { toast('材料の名前を入れてください'); return $('#f-name').focus(); }
   const r = find(f.shelf); if (!r) return;
-  const rec = { id:f.editingId || uid('i'), name, unit:f.unit, conv:num(f.conv), convUnit:f.convUnit, price:num(f.price), tare:num(f.tare), vendor:f.vendor.trim(), star:!!f.star, memo:f.memo.trim(), photo:f.photo || null };
+    const prices = (f.prices || []).map(p => ({ ...p }));
+  if (num(f.newPrice) != null) prices.push({ id:uid('q'), date:f.newDate || today(), buyUnit:f.buyUnit || f.unit, pack:num(f.pack) > 0 ? num(f.pack) : 1, price:num(f.newPrice), tax:f.tax || '抜', vendor:f.vendor.trim(), memo:'' });
+  const rec = { id:f.editingId || uid('i'), name, unit:f.unit, conv:num(f.conv), convUnit:f.convUnit, buyUnit:f.buyUnit || f.unit, pack:num(f.pack) > 0 ? num(f.pack) : 1, prices, price:unitPrice(latestP({ prices }), f.price), tare:num(f.tare), vendor:f.vendor.trim(), star:!!f.star, memo:f.memo.trim(), photo:f.photo || null };
   if (f.editingId) { const i = r.sh.items.findIndex(x => x.id === f.editingId); r.sh.items[i] = rec; S.form = null; }
-  else { r.sh.items.push(rec); S.form = { ...S.form, name:'', conv:'', price:'', tare:'', memo:'', star:false, photo:null, editingId:null }; }
+  else { r.sh.items.push(rec); S.form = { ...S.form, name:'', conv:'', price:null, prices:[], pack:'', newPrice:'', tare:'', memo:'', star:false, photo:null, editingId:null }; }
   markMaster(); render(); if (!f.editingId) focusForm(); toast(f.editingId ? '更新しました' : '追加しました');
 }
 function onInput(e){
@@ -664,11 +729,12 @@ function closeCount(){
   const st = cur(), d = S.draftCount, rows = allItems(st);
   const qty = {}, qtyRaw = {}; rows.forEach(r => { const n = netQty(r.item, d.qty[r.item.id]); if (n != null) { qty[r.item.id] = n; if (isWeighed(r.item)) qtyRaw[r.item.id] = num(d.qty[r.item.id]); } });
   if (!Object.keys(qty).length) return toast('数量が1つも入っていません');
-  const total = rows.reduce((a, r) => a + (qty[r.item.id] || 0) * (r.item.price || 0), 0);
-  const starTotal = rows.filter(r => r.item.star).reduce((a, r) => a + (qty[r.item.id] || 0) * (r.item.price || 0), 0);
+  const pz = i => priceAt(i, d.date || today());
+  const total = rows.reduce((a, r) => a + (qty[r.item.id] || 0) * (pz(r.item) || 0), 0);
+  const starTotal = rows.filter(r => r.item.star).reduce((a, r) => a + (qty[r.item.id] || 0) * (pz(r.item) || 0), 0);
   const last = lastCount(st), pur = num(d.purchases), sales = num(d.sales);
   const cogs = last && pur != null ? last.total + pur - total : null;
-  const lines = rows.filter(r => qty[r.item.id] != null).map(r => ({ shelf:shelfNo(r.loc, r.shelf), item:r.item.name, unit:r.item.unit, qty:qty[r.item.id], raw:qtyRaw[r.item.id] ?? null, tare:r.item.tare ?? null, price:r.item.price ?? null, amount:r.item.price != null ? Math.round(qty[r.item.id] * r.item.price) : null, star:!!r.item.star }));
+  const lines = rows.filter(r => qty[r.item.id] != null).map(r => ({ shelf:shelfNo(r.loc, r.shelf), item:r.item.name, unit:r.item.unit, qty:qty[r.item.id], raw:qtyRaw[r.item.id] ?? null, tare:r.item.tare ?? null, price:pz(r.item), amount:pz(r.item) != null ? Math.round(qty[r.item.id] * pz(r.item)) : null, star:!!r.item.star }));
   st.counts.push({ id:uid('c'), date:d.date || today(), by:d.by.trim(), qty, qtyRaw, lines, total:Math.round(total), starTotal:Math.round(starTotal), purchases:pur, sales, cogs:cogs != null ? Math.round(cogs) : null, mr:cogs != null && sales ? cogs / sales * 100 : null, closedAt:new Date().toISOString(), synced:false });
   st.counts.sort((a, b) => a.date < b.date ? -1 : 1);
   S.draftCount = { date:today(), by:d.by, qty:{}, purchases:'', sales:'' }; saveDraft(); save(); render(); toast('締めました：' + yen(total)); pushCounts();
