@@ -254,7 +254,7 @@ function boot(){
   $('#app').addEventListener('change', onChange);
   render();
 }
-function render(){ ({ reg:renderReg, count:renderCount, out:renderOut })[S.view](); }
+function render(){ ({ reg:renderReg, count:renderCount, out:renderOut })[S.view](); if (window.claude) $$('[data-act="dl"]').forEach(b => b.hidden = true); }   // 公開ページではファイル保存が使えないのでコピーだけにする
 
 /* --- 棚の登録 --- */
 function renderReg(){
