@@ -10,12 +10,12 @@
 var SHEET_TITLE = '棚卸し 棚マスタ';
 var PHOTO_FOLDER = '棚卸し写真';
 var H_DATA   = ['店舗', 'masterRev', 'master', 'counts', '更新日時', '更新者'];
-var H_MASTER = ['店舗', '場所記号', '場所', '棚番号', '棚名', '棚の写真', '品目', '数える単位', '1単位の換算', '換算単位', '仕入れ単位', '入数', '仕入れ価格', '税', '価格の適用日', '円/数える単位', '風袋(g)', '仕入れ先', '重点', '写真', 'メモ', '更新日時'];
-var H_PRICE  = ['店舗', '棚番号', '品目', '数える単位', '適用日', '仕入れ単位', '入数', '仕入れ価格', '税', '円/数える単位', '仕入れ先', 'メモ', 'id'];
-var H_COUNT  = ['店舗', '棚卸し日', '数えた人', '在庫金額', 'うち重点', '期間の仕入れ', '期間の売上', '材料費', '材料費率(%)', '締め日時', 'id'];
-var H_LINES  = ['店舗', '棚卸し日', '棚番号', '品目', '数える単位', '数量(正味)', 'はかり表示', '風袋(g)', '円/数える単位', '金額', '重点', 'countId'];
+var H_MASTER = ['店舗', '場所', '棚', '棚の補足', '棚の写真', '商品', '仕込み品', '材料', '数える単位', '1単位の換算', '換算単位', '仕入れ単位', '入数', '仕入れ価格', '税', '価格の適用日', '円/数える単位', '風袋(g)', '仕入れ先', '重点', '写真', 'りそげん名', 'メモ', '更新日時'];
+var H_PRICE  = ['店舗', '棚', '商品', '数える単位', '適用日', '仕入れ単位', '入数', '仕入れ価格', '税', '円/数える単位', '仕入れ先', 'メモ', 'id'];
+var H_LINES  = ['店舗', '棚卸し日', '棚', '商品', '仕込み品', '数える単位', '数量(正味)', 'はかり表示', '風袋(g)', '円/数える単位', '金額', '重点', 'countId'];
+var H_COUNT  = ['店舗', '棚卸し日', '数えた人', '在庫金額', 'うち重点', 'うち仕込み品', '期間の仕入れ', '期間の売上', '材料費', '材料費率(%)', '締め日時', 'id'];
 
-function doGet() {
+function doGet(e) {
   return HtmlService.createHtmlOutputFromFile('tanaoroshi')
     .setTitle('棚卸し 棚マスタ')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
@@ -96,6 +96,7 @@ function pushCounts(arg) {
     counts.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
     r.sh.getRange(r.row, 4, 1, 3).setValues([[JSON.stringify(counts), new Date(), arg.editor || '']]);
     writeCounts_(ss, arg.store, counts);
+    writeStoreSheet_(ss, arg.store, parse_(r.vals[2], { locations: [] }));
     return { n: counts.length };
   } finally { lock.releaseLock(); }
 }
@@ -118,7 +119,8 @@ function replaceRows_(sh, store, rows) {
   if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).clearContent();
   if (out.length) sh.getRange(2, 1, out.length, out[0].length).setValues(out);
 }
-function shelfNo_(loc, sh) { var n = String(sh.no || 0); while (n.length < 2) n = '0' + n; return loc.code + '-' + n; }
+function shelfLabel_(sh) { return sh.label != null && sh.label !== '' ? String(sh.label) : String(sh.no == null ? '' : sh.no); }
+function shelfNo_(loc, sh) { return loc.code ? loc.code + '-' + shelfLabel_(sh) : loc.name + ' ' + shelfLabel_(sh); }
 function latestPrice_(it) {
   var ps = (it.prices || []).slice().sort(function (a, b) { return (a.date || '') < (b.date || '') ? -1 : (a.date || '') > (b.date || '') ? 1 : 0; });
   return ps.length ? ps[ps.length - 1] : null;
@@ -129,14 +131,16 @@ function unitPrice_(p, fallback) {
   return p.price == null ? '' : Math.round(Number(p.price) / pack * 100) / 100;
 }
 function writeMaster_(ss, store, master) {
-  var now = new Date(), rows = [], prices = [];
+  var now = new Date(), rows = [], prices = [], names = {};
+  (master.locations || []).forEach(function (loc) { (loc.shelves || []).forEach(function (sh) { (sh.items || []).forEach(function (it) { names[it.id] = it.name; }); }); });
   (master.locations || []).forEach(function (loc) {
     (loc.shelves || []).forEach(function (sh) {
       (sh.items || []).forEach(function (it) {
         var no = shelfNo_(loc, sh), lp = latestPrice_(it);
-        rows.push([store, loc.code, loc.name, no, sh.name || '', sh.photo && sh.photo.url || '', it.name, it.unit || '', it.conv == null ? '' : it.conv, it.convUnit || '',
+        var made = (it.madeFrom || []).map(function (id) { return names[id] || ''; }).filter(String).join('、');
+        rows.push([store, loc.name, no, sh.name || '', sh.photo && sh.photo.url || '', it.name, it.prep ? '仕込み品' : '', made, it.unit || '', it.conv == null ? '' : it.conv, it.convUnit || '',
           lp ? lp.buyUnit || '' : (it.buyUnit || ''), lp ? lp.pack : (it.pack == null ? '' : it.pack), lp ? lp.price : '', lp ? lp.tax || '' : '', lp ? lp.date || '' : '', unitPrice_(lp, it.price),
-          it.tare == null ? '' : it.tare, it.vendor || '', it.star ? '★' : '', it.photo && it.photo.url || '', it.memo || '', now]);
+          it.tare == null ? '' : it.tare, it.vendor || '', it.star ? '★' : '', it.photo && it.photo.url || '', it.fName || '', it.memo || '', now]);
         (it.prices || []).forEach(function (p) {
           prices.push([store, no, it.name, it.unit || '', p.date || '', p.buyUnit || '', p.pack == null ? '' : p.pack, p.price == null ? '' : p.price, p.tax || '', unitPrice_(p), p.vendor || '', p.memo || '', p.id || '']);
         });
@@ -145,13 +149,46 @@ function writeMaster_(ss, store, master) {
   });
   replaceRows_(sheet_(ss, '品目マスタ', H_MASTER), store, rows);
   replaceRows_(sheet_(ss, '価格履歴', H_PRICE), store, prices);
+  writeStoreSheet_(ss, store, master);
 }
+
+/* 店別の在庫表：棚の順に商品を並べ、「今回」の列を空けておく。紙に印刷して数えても、画面で数えても同じ順番 */
+function writeStoreSheet_(ss, store, master) {
+  var name = '在庫表_' + store;
+  var sh = ss.getSheetByName(name);
+  if (!sh) { sh = ss.insertSheet(name); sh.setFrozenRows(2); }
+  var head1 = [store + ' 在庫表', '', '', '', '', '', '', '', '更新 ' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd HH:mm'), '', ''];
+  var head2 = ['棚', '商品', '仕込み品', '★', '数える単位', '風袋(g)', '円/単位', '前回の数量', '今回の数量', '金額', '写真'];
+  var lastQty = {}, cs = [];
+  try { var r = dataRow_(ss, store); cs = parse_(r.vals[3], []); } catch (e) {}
+  if (cs.length) lastQty = cs[cs.length - 1].qty || {};
+  var rows = [];
+  (master.locations || []).forEach(function (loc) {
+    (loc.shelves || []).forEach(function (s2) {
+      (s2.items || []).forEach(function (it) {
+        var lp = latestPrice_(it), up = unitPrice_(lp, it.price);
+        rows.push([shelfNo_(loc, s2), it.name, it.prep ? '○' : '', it.star ? '★' : '', it.unit || '', it.tare == null ? '' : it.tare, up, lastQty[it.id] == null ? '' : lastQty[it.id], '', '', it.photo && it.photo.url || '']);
+      });
+    });
+  });
+  sh.clearContents();
+  sh.getRange(1, 1, 2, head2.length).setValues([head1, head2]);
+  if (rows.length) {
+    sh.getRange(3, 1, rows.length, head2.length).setValues(rows);
+    // 金額 ＝ 今回の数量 × 円/単位（今回の数量を手で入れると出る）
+    var f = []; for (var i = 0; i < rows.length; i++) { var n = i + 3; f.push(['=IF(I' + n + '="","",I' + n + '*G' + n + ')']); }
+    sh.getRange(3, 10, rows.length, 1).setFormulas(f);
+    sh.getRange(3, 9, rows.length, 1).setBackground('#fff8e1');
+  }
+  sh.getRange(1, 1).setFontWeight('bold'); sh.getRange(2, 1, 1, head2.length).setFontWeight('bold');
+}
+
 function writeCounts_(ss, store, counts) {
   var heads = [], lines = [];
   counts.forEach(function (c) {
-    heads.push([store, c.date, c.by || '', c.total || 0, c.starTotal || 0, c.purchases == null ? '' : c.purchases, c.sales == null ? '' : c.sales, c.cogs == null ? '' : c.cogs, c.mr == null ? '' : Math.round(c.mr * 10) / 10, c.closedAt || '', c.id]);
+    heads.push([store, c.date, c.by || '', c.total || 0, c.starTotal || 0, c.prepTotal || 0, c.purchases == null ? '' : c.purchases, c.sales == null ? '' : c.sales, c.cogs == null ? '' : c.cogs, c.mr == null ? '' : Math.round(c.mr * 10) / 10, c.closedAt || '', c.id]);
     (c.lines || []).forEach(function (l) {
-      lines.push([store, c.date, l.shelf, l.item, l.unit || '', l.qty, l.raw == null ? '' : l.raw, l.tare == null ? '' : l.tare, l.price == null ? '' : l.price, l.amount == null ? '' : l.amount, l.star ? '★' : '', c.id]);
+      lines.push([store, c.date, l.shelf, l.item, l.prep ? '仕込み品' : '', l.unit || '', l.qty, l.raw == null ? '' : l.raw, l.tare == null ? '' : l.tare, l.price == null ? '' : l.price, l.amount == null ? '' : l.amount, l.star ? '★' : '', c.id]);
     });
   });
   replaceRows_(sheet_(ss, '棚卸し', H_COUNT), store, heads);
