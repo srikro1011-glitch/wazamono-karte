@@ -198,11 +198,11 @@ th{color:var(--gold);font-weight:600}
    ========================================================= */
 const STORES = ['鯛ドロボー','島ドロボー','志知カフェ','麺ドロボー','牛と米','AWAWA','わぎゅぎゅ','北淡シマウマ'];
 const LOC_PRESETS = ['冷蔵庫','冷凍庫','乾物・調味料','米・油','ドリンク','資材・備品','仕込み場','その他'];
-const UNITS = ['個','パック','本','袋','箱','ケース','缶','kg','g','尾','枚','バット'];
+const UNITS = ['kg','g','個','パック','本','袋','箱','ケース','缶','尾','枚','バット'];
 const CONV_UNITS = ['g','個','ml','尾','枚'];
 const KEY = 'tana:v2';
 const POLL_MS = 30000;
-const APP_VER = '2026-10-12 r5';
+const APP_VER = '2026-10-12 r6';
 
 const $ = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => [...r.querySelectorAll(s)];
@@ -304,6 +304,9 @@ const unitPrice = (pr, fallback) => pr ? (num(pr.price) == null ? null : num(pr.
 const priceOf = i => unitPrice(latestP(i), i.price);
 const priceAt = (i, date) => { if (!i.prices || !i.prices.length) return i.price ?? null; const ps = sortP(i.prices).filter(p => !p.date || !date || p.date <= date); return ps.length ? unitPrice(ps[ps.length - 1]) : unitPrice(sortP(i.prices)[0]); };
 const fmtP = pr => !pr ? '' : `${yen(pr.price)}/${esc(pr.buyUnit || '単位')}${num(pr.pack) > 1 ? `（${pr.pack}入）` : ''}${pr.tax === '込' ? '税込' : ''}${pr.date ? `・${esc(pr.date)}` : ''}`;
+const draft = () => S.draftCount || (S.draftCount = ls.get('draft:' + S.store) || { date:today(), by:CFG.name || '', qty:{}, purchases:'', sales:'' });
+/* 登録画面に出す「いまの量」：下書きにあればそれ、無ければ最後に締めた棚卸しの値 */
+const qtyNow = i => { const d = draft(); if (d.qty[i.id] != null && d.qty[i.id] !== '') return { raw:d.qty[i.id], draft:true }; const lc = lastCount(cur()); if (lc && lc.qty[i.id] != null) return { raw:lc.qtyRaw && lc.qtyRaw[i.id] != null ? lc.qtyRaw[i.id] : lc.qty[i.id], draft:false }; return null; };
 const isWeighed = i => (i.unit === 'g' || i.unit === 'kg') && num(i.tare) > 0;
 const netQty = (i, raw) => { const r = num(raw); if (r == null) return null; if (!isWeighed(i)) return r; const g = Math.max(0, r - num(i.tare)); return i.unit === 'kg' ? g / 1000 : g; };
 
@@ -420,8 +423,12 @@ async function sendSheet(){
   if (!canSync()) { toast('同期先が未設定です。設定タブでURLを入れてください'); setView('cfg'); return; }
   if (!navigator.onLine) return toast('オフラインです。回線が戻ると自動で送ります');
   st.dirty = true; S.localRev++; clearTimeout(markMaster.t);
-  toast('送信中…'); await pushMaster(); await pushCounts();
-  if (S.net === 'saved') toast(`送信しました：商品 ${all.length}（仕込み品 ${all.filter(x => x.item.prep).length}・写真 ${all.filter(x => x.item.photo).length}）`);
+  toast('送信中…'); await pushMaster();
+  const d = draft(); const nq = all.filter(x => num(d.qty[x.item.id]) != null).length;
+  let closed = null;
+  if (nq) { if (!d.by && CFG.name) d.by = CFG.name; closed = closeCount(true); }   // 量が入っていれば、この時点の在庫として締めてシートへ
+  await pushCounts();
+  if (S.net === 'saved') toast(`送信しました：商品 ${all.length}（量あり ${nq}・仕込み品 ${all.filter(x => x.item.prep).length}・写真 ${all.filter(x => x.item.photo).length}）${closed ? '　在庫金額 ' + yen(closed.total) : ''}`);
   else if (S.net === 'error') toast('送信に失敗しました：' + S.netMsg);
   render();
 }
@@ -429,11 +436,11 @@ async function sendSheet(){
 /* --- 棚の登録 --- */
 function renderReg(){
   const st = cur(); const all = allItems(st);
-  const n = all.length, stars = all.filter(x => x.item.star).length, preps = all.filter(x => x.item.prep).length, photos = all.filter(x => x.item.photo).length;
+  const n = all.length, stars = all.filter(x => x.item.star).length, preps = all.filter(x => x.item.prep).length, photos = all.filter(x => x.item.photo).length, counted = all.filter(x => { const q = qtyNow(x.item); return q && q.draft; }).length;
   $('#app').innerHTML = `
     <div class="hero"><div class="eyebrow">SHELF MASTER</div><h2>${esc(S.store)}の棚</h2>
-      <p>冷蔵庫や棚の名前を店の呼び方のまま入れて、そこにある商品を登録します。名前と写真だけで登録でき、単位や価格はあとから足せます。</p>
-      <p style="font-variant-numeric:tabular-nums">商品 ${n}　・　写真あり ${photos}　・　仕込み品 ${preps}　・　★重点 ${stars}</p>
+      <p>冷蔵庫や棚の名前を店の呼び方のまま入れて、そこにある商品と「いま何キロ・何個あるか」を登録します。価格はあとから足せます。</p>
+      <p style="font-variant-numeric:tabular-nums">商品 ${n}　・　量を入れた ${counted}　・　写真 ${photos}　・　仕込み品 ${preps}　・　★ ${stars}</p>
       ${st.note ? `<div class="notice">${esc(st.note)}</div>` : ''}
     </div>
     ${st.locations.map(locHtml).join('') || '<div class="empty">まだ場所がありません。下から冷蔵庫や棚を追加してください。</div>'}
@@ -473,7 +480,7 @@ function shelfHtml(loc, sh){
       ${sh.items.map(i => `<div class="it" data-item="${i.id}">
         ${i.photo ? `<img class="ph" src="${esc(thumb(i.photo))}" alt="">` : '<span class="ph none">写真なし</span>'}
         <div class="n">${i.star ? '<span class="star">★</span>' : ''}${esc(i.name)}${i.prep ? '<span class="badge prep">仕込み品</span>' : ''}${i.fName ? '<span class="badge">りそげん</span>' : ''}</div>
-        <div class="d">${esc(i.unit)}${i.conv ? `・1${esc(i.unit)}＝${i.conv}${esc(i.convUnit)}` : ''}${priceOf(i) != null ? `・${yen(priceOf(i))}/${esc(i.unit)}` : '・<span style="color:var(--warn)">価格はあとで</span>'}${num(i.tare) > 0 ? `・風袋${i.tare}g` : ''}${i.prep && i.madeFrom && i.madeFrom.length ? `・材料 ${i.madeFrom.map(id => { const x = itemById(cur(), id); return x ? esc(x.name) : ''; }).filter(Boolean).join('、')}` : ''}${i.memo ? `　${esc(i.memo)}` : ''}</div>
+        <div class="d">${(() => { const q = qtyNow(i); if (!q) return '<span style="color:var(--warn)">量が未入力</span>'; const n = netQty(i, q.raw); return `<b style="color:var(--gold-hi)">${isWeighed(i) ? esc(q.raw) + 'g → ' : ''}${n != null ? +(+n).toFixed(3) : esc(q.raw)}${esc(i.unit)}</b>${q.draft ? '' : '（前回）'}`; })()}${i.conv ? `・1${esc(i.unit)}＝${i.conv}${esc(i.convUnit)}` : ''}${priceOf(i) != null ? `・${yen(priceOf(i))}/${esc(i.unit)}` : '・<span style="color:var(--warn)">価格はあとで</span>'}${num(i.tare) > 0 ? `・風袋${i.tare}g` : ''}${i.prep && i.madeFrom && i.madeFrom.length ? `・材料 ${i.madeFrom.map(id => { const x = itemById(cur(), id); return x ? esc(x.name) : ''; }).filter(Boolean).join('、')}` : ''}${i.memo ? `　${esc(i.memo)}` : ''}</div>
         <div class="ops"><button class="ic" data-act="edit-item" title="編集">✎</button>${delBtn('item', i.id)}</div>
       </div>`).join('') || '<div class="empty">商品なし</div>'}
       ${editing ? itemForm(S.form) : `<div class="actions"><button class="btn sm" data-act="new-item">＋ 商品を登録</button></div>`}
@@ -494,6 +501,9 @@ function itemForm(f){
       <button class="cb ${f.star ? 'on' : ''}" data-act="toggle-star">★ 重点（毎回数える）</button>
     </div>
     ${f.prep ? `<label>この仕込み品の材料（この店の商品から選ぶ。任意）</label><div class="pick">${others.map(o => `<button class="cb ${(f.madeFrom || []).includes(o.id) ? 'on' : ''}" data-act="toggle-made" data-id="${o.id}">${esc(o.name)}</button>`).join('') || '<span class="note">先に材料の商品を登録すると、ここに出ます</span>'}</div>` : ''}
+    <div class="two">
+      <div><label>いまの量（この棚にある分）${(f.unit === 'g' || f.unit === 'kg') && num(f.tare) > 0 ? '　※はかりの表示を g で' : ''}</label><input id="f-qty" inputmode="decimal" value="${esc(f.qty ?? '')}" placeholder="例：3 → 3${esc(f.unit)}"></div>
+    </div>
     <label>数える単位</label>
     <div class="chips" id="f-units">${UNITS.map(u => `<button class="cb ${f.unit === u ? 'on' : ''}" data-act="set-unit" data-u="${u}">${u}</button>`).join('')}</div>
     <details class="more" ${f.editingId || f.open ? 'open' : ''}><summary>くわしく（換算・風袋・仕入れ先・価格・りそげん名）</summary><div class="in">
@@ -528,8 +538,7 @@ function itemForm(f){
 /* --- 棚卸し --- */
 function renderCount(){
   const st = cur(); const rows = allItems(st); const last = lastCount(st);
-  if (!S.draftCount) S.draftCount = ls.get('draft:' + S.store) || { date:today(), by:CFG.name || '', qty:{}, purchases:'', sales:'' };
-  const d = S.draftCount;
+  const d = draft();
   const q = r => netQty(r.item, d.qty[r.item.id]);
   const pz = i => priceAt(i, d.date);
   const done = rows.filter(r => q(r) != null).length;
@@ -695,8 +704,8 @@ function onClick(e){
     case 'shelf-down': move(loc.shelves, loc.shelves.indexOf(sh), 1); markMaster(); render(); break;
     case 'rename-shelf': { const inp = document.createElement('input'); inp.value = sh.name; inp.placeholder = '棚の名前（例：上段・野菜室）'; inp.style.cssText = 'padding:6px 8px;font-size:14px'; b.replaceWith(inp); inp.focus();
       let done = false; const fin = () => { if (done) return; done = true; if (sh.name !== inp.value.trim()) { sh.name = inp.value.trim(); markMaster(); } render(); }; inp.onblur = fin; inp.onkeydown = ev => { if (ev.key === 'Enter') inp.blur(); }; break; }
-    case 'new-item': S.form = { shelf:sh.id, name:'', unit:UNITS[0], conv:'', convUnit:'g', price:null, prices:[], buyUnit:UNITS[0], pack:'', newPrice:'', tax:'抜', newDate:today(), tare:'', vendor:'', memo:'', star:false, prep:false, madeFrom:[], fName:'', photo:null, editingId:null, open:false }; render(); focusForm(); break;
-    case 'edit-item': { const lp = latestP(it); S.form = { shelf:sh.id, ...it, prices:(it.prices || []).map(p => ({ ...p })), madeFrom:(it.madeFrom || []).slice(), photo:it.photo ? { ...it.photo } : null, buyUnit:it.buyUnit || (lp && lp.buyUnit) || it.unit, pack:it.pack ?? (lp && lp.pack) ?? '', newPrice:'', tax:(lp && lp.tax) || '抜', newDate:today(), editingId:it.id }; render(); focusForm(); break; }
+    case 'new-item': S.form = { shelf:sh.id, name:'', qty:'', unit:UNITS[0], conv:'', convUnit:'g', price:null, prices:[], buyUnit:UNITS[0], pack:'', newPrice:'', tax:'抜', newDate:today(), tare:'', vendor:'', memo:'', star:false, prep:false, madeFrom:[], fName:'', photo:null, editingId:null, open:false }; render(); focusForm(); break;
+    case 'edit-item': { const lp = latestP(it); const qn = qtyNow(it); S.form = { shelf:sh.id, ...it, qty:qn && qn.draft ? qn.raw : '', prices:(it.prices || []).map(p => ({ ...p })), madeFrom:(it.madeFrom || []).slice(), photo:it.photo ? { ...it.photo } : null, buyUnit:it.buyUnit || (lp && lp.buyUnit) || it.unit, pack:it.pack ?? (lp && lp.pack) ?? '', newPrice:'', tax:(lp && lp.tax) || '抜', newDate:today(), editingId:it.id }; render(); focusForm(); break; }
     case 'set-unit': readForm(); S.form.unit = b.dataset.u; render(); break;
     case 'set-tax': readForm(); S.form.tax = b.dataset.t; render(); break;
     case 'toggle-prep': readForm(); S.form.prep = !S.form.prep; render(); break;
@@ -717,7 +726,7 @@ function onClick(e){
     case 'del-item': sh.items = sh.items.filter(i => i !== it); S.confirmId = null; markMaster(); render(); break;
     case 'del-count': { const id = b.dataset.id; st.counts = st.counts.filter(c => c.id !== id); S.confirmId = null; save(); render(); if (canSync()) api('deleteCount', { store:S.store, id }).catch(e => toast('シート側の削除に失敗: ' + e.message)); break; }
     case 'close-count': closeCount(); break;
-    case 'clear-count': S.draftCount = { date:today(), by:S.draftCount.by, qty:{}, purchases:'', sales:'' }; saveDraft(); render(); break;
+    case 'clear-count': S.draftCount = { date:today(), by:draft().by, qty:{}, purchases:'', sales:'' }; saveDraft(); render(); break;
     case 'copy': copyOut(b.dataset.what); break;
     case 'dl': download(b.dataset.what); break;
     case 'import': importJson($('#imp').value); break;
@@ -736,7 +745,7 @@ function addLoc(code, name){
 function focusForm(){ const el = $('#f-name'); if (el) { el.scrollIntoView({ block:'center' }); el.focus(); } }
 function readForm(){
   const f = S.form; if (!f || !$('#itemform')) return;
-  f.name = $('#f-name').value; f.conv = $('#f-conv').value; f.convUnit = $('#f-convu').value; f.newPrice = $('#f-price').value; f.buyUnit = $('#f-buyunit').value; f.pack = $('#f-pack').value; f.newDate = $('#f-pdate').value; f.tare = $('#f-tare').value; f.vendor = $('#f-vendor').value; f.memo = $('#f-memo').value; f.fName = $('#f-fname').value; f.open = $('#itemform details.more').open;
+  f.name = $('#f-name').value; f.qty = $('#f-qty').value; f.conv = $('#f-conv').value; f.convUnit = $('#f-convu').value; f.newPrice = $('#f-price').value; f.buyUnit = $('#f-buyunit').value; f.pack = $('#f-pack').value; f.newDate = $('#f-pdate').value; f.tare = $('#f-tare').value; f.vendor = $('#f-vendor').value; f.memo = $('#f-memo').value; f.fName = $('#f-fname').value; f.open = $('#itemform details.more').open;
 }
 function saveItem(){
   readForm(); const f = S.form; const name = f.name.trim(); if (!name) { toast('材料の名前を入れてください'); return $('#f-name').focus(); }
@@ -744,8 +753,9 @@ function saveItem(){
     const prices = (f.prices || []).map(p => ({ ...p }));
   if (num(f.newPrice) != null) prices.push({ id:uid('q'), date:f.newDate || today(), buyUnit:f.buyUnit || f.unit, pack:num(f.pack) > 0 ? num(f.pack) : 1, price:num(f.newPrice), tax:f.tax || '抜', vendor:f.vendor.trim(), memo:'' });
   const rec = { id:f.editingId || uid('i'), name, unit:f.unit, conv:num(f.conv), convUnit:f.convUnit, buyUnit:f.buyUnit || f.unit, pack:num(f.pack) > 0 ? num(f.pack) : 1, prices, price:unitPrice(latestP({ prices }), f.price), tare:num(f.tare), vendor:f.vendor.trim(), star:!!f.star, prep:!!f.prep, madeFrom:f.prep ? (f.madeFrom || []) : [], fName:(f.fName || '').trim(), memo:f.memo.trim(), photo:f.photo || null };
+  { const d = draft(); if (num(f.qty) != null) d.qty[rec.id] = String(f.qty).trim(); else delete d.qty[rec.id]; saveDraft(); }
   if (f.editingId) { const i = r.sh.items.findIndex(x => x.id === f.editingId); r.sh.items[i] = rec; S.form = null; }
-  else { r.sh.items.push(rec); S.form = { ...S.form, name:'', conv:'', price:null, prices:[], pack:'', newPrice:'', tare:'', memo:'', star:false, prep:false, madeFrom:[], fName:'', photo:null, editingId:null, open:false }; }
+  else { r.sh.items.push(rec); S.form = { ...S.form, name:'', qty:'', conv:'', price:null, prices:[], pack:'', newPrice:'', tare:'', memo:'', star:false, prep:false, madeFrom:[], fName:'', photo:null, editingId:null, open:false }; }
   markMaster(); render(); if (!f.editingId) focusForm(); toast(f.editingId ? '更新しました' : name + ' を登録しました');
 }
 function onInput(e){
@@ -773,10 +783,10 @@ function compress(file, max = 1000, q = 0.75){
 let tileT;
 function updateCountTiles(){ clearTimeout(tileT); tileT = setTimeout(() => { if (S.view !== 'count') return; const y = scrollY; const a = document.activeElement; const id = a && a.dataset.qty; renderCount(); scrollTo(0, y); if (id) { const el = $(`[data-qty="${id}"]`); if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } } else if (a && a.id) { const el = $('#' + a.id); if (el) el.focus(); } }, 400); }
 function saveDraft(){ ls.set('draft:' + S.store, S.draftCount); }
-function closeCount(){
-  const st = cur(), d = S.draftCount, rows = allItems(st);
+function closeCount(quiet){
+  const st = cur(), d = draft(), rows = allItems(st);
   const qty = {}, qtyRaw = {}; rows.forEach(r => { const n = netQty(r.item, d.qty[r.item.id]); if (n != null) { qty[r.item.id] = n; if (isWeighed(r.item)) qtyRaw[r.item.id] = num(d.qty[r.item.id]); } });
-  if (!Object.keys(qty).length) return toast('数量が1つも入っていません');
+  if (!Object.keys(qty).length) { if (!quiet) toast('数量が1つも入っていません'); return null; }
   const pz = i => priceAt(i, d.date || today());
   const total = rows.reduce((a, r) => a + (qty[r.item.id] || 0) * (pz(r.item) || 0), 0);
   const starTotal = rows.filter(r => r.item.star).reduce((a, r) => a + (qty[r.item.id] || 0) * (pz(r.item) || 0), 0);
@@ -786,7 +796,10 @@ function closeCount(){
   const prepTotal = rows.filter(r => r.item.prep).reduce((a, r) => a + (qty[r.item.id] || 0) * (pz(r.item) || 0), 0);
   st.counts.push({ id:uid('c'), date:d.date || today(), by:d.by.trim(), qty, qtyRaw, lines, total:Math.round(total), starTotal:Math.round(starTotal), prepTotal:Math.round(prepTotal), purchases:pur, sales, cogs:cogs != null ? Math.round(cogs) : null, mr:cogs != null && sales ? cogs / sales * 100 : null, closedAt:new Date().toISOString(), synced:false });
   st.counts.sort((a, b) => a.date < b.date ? -1 : 1);
-  S.draftCount = { date:today(), by:d.by, qty:{}, purchases:'', sales:'' }; saveDraft(); save(); render(); toast('締めました：' + yen(total)); pushCounts();
+  const rec = st.counts.find(c => c.closedAt && c.qty === qty) || st.counts[st.counts.length - 1];
+  S.draftCount = { date:today(), by:d.by, qty:{}, purchases:'', sales:'' }; saveDraft(); save();
+  if (!quiet) { render(); toast('締めました：' + yen(total)); pushCounts(); }
+  return rec;
 }
 function copyOut(what){
   const st = cur(); const last = lastCount(st);
