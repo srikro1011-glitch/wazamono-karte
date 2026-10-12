@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0a09">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex,nofollow">
+<title>棚卸し 棚マスタ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+/* 案件カルテと同じ黒×金。棚番号は等幅で、現場で貼るラベルと同じ字面にする */
+:root{
+  --bg:#0b0a09; --panel:#13110f; --panel2:#1a1714; --field:#0e0d0b;
+  --ink:#f4efe6; --sub:#a39a8b; --line:rgba(212,168,75,.22); --line2:rgba(255,255,255,.08);
+  --gold:#d4a84b; --gold-hi:#f3dc9b; --gold-grad:linear-gradient(135deg,#f3dc9b 0%,#d4a84b 42%,#9a6f22 100%);
+  --ok:#8bd0a0; --warn:#e6b25a; --err:#f08a80;
+  --serif:'Shippori Mincho','Hiragino Mincho ProN','Yu Mincho',serif;
+  --mono:ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--ink)}
+body{margin:0;font:15px/1.7 system-ui,-apple-system,'Hiragino Sans','Yu Gothic UI',sans-serif;min-height:100vh;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:
+  radial-gradient(900px 520px at 88% -8%,rgba(255,255,255,.07),transparent 62%),
+  radial-gradient(700px 500px at 10% 110%,rgba(212,168,75,.09),transparent 62%),var(--bg)}
+h1,h2,h3{font-family:var(--serif);font-weight:700;margin:0;text-wrap:balance}
+button,input,select,textarea{font:inherit;color:inherit}
+.wrap{max-width:820px;margin:0 auto;padding-block:0 120px;padding-inline:16px}
+.mark{display:inline-flex;align-items:baseline;gap:6px;line-height:1;color:#fff}
+.mark .wz{font:800 17px/1.05 var(--serif);font-style:italic}
+.mark .wk{font:500 11px/1 var(--serif);letter-spacing:.3em}
+.eyebrow{font:11px/1 var(--mono);letter-spacing:.22em;color:var(--gold);text-transform:uppercase}
+label,.lb{display:block;font-size:12px;font-weight:600;color:var(--sub);margin:14px 0 6px;letter-spacing:.06em}
+input,select,textarea{width:100%;font-size:16px;padding:11px 12px;border:1px solid var(--line2);background:var(--field);border-radius:8px;outline:none;color:var(--ink)}
+input:focus,select:focus,textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(212,168,75,.18)}
+textarea{min-height:110px;resize:vertical;font-family:var(--mono);font-size:12px}
+select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--gold) 50%),linear-gradient(135deg,var(--gold) 50%,transparent 50%);background-position:calc(100% - 18px) 50%,calc(100% - 12px) 50%;background-size:6px 6px;background-repeat:no-repeat;padding-right:36px}
+.btn{background:var(--gold-grad);color:#1a1206;border:0;border-radius:8px;padding:11px 18px;font-weight:700;cursor:pointer;white-space:nowrap}
+.btn.ghost{background:none;border:1px solid var(--line);color:var(--gold)}
+.btn.danger{background:none;border:1px solid rgba(240,138,128,.5);color:var(--err)}
+.btn.sm{padding:6px 11px;font-size:13px}
+.btn:disabled{opacity:.4;cursor:default}
+.btn:focus-visible,.link:focus-visible,.tab:focus-visible{outline:2px solid var(--gold-hi);outline-offset:2px}
+.link{background:none;border:0;color:var(--sub);cursor:pointer;padding:4px 0;font-size:13px;text-decoration:underline}
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
+
+/* 上部バー */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:rgba(11,10,9,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.bar .in{max-width:820px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.bar select{width:auto;flex:1;min-width:0;padding:8px 36px 8px 12px;font-family:var(--serif);font-weight:700}
+.tabs{display:flex;gap:4px;width:100%;border-top:1px solid var(--line2);padding-top:8px}
+.tab{flex:1;background:none;border:0;border-radius:8px;padding:9px 4px;color:var(--sub);cursor:pointer;font-weight:600;letter-spacing:.04em;font-size:14px}
+.tab.on{color:#1a1206;background:var(--gold-grad)}
+
+.hero{padding:22px 0 4px}
+.hero h2{font-size:26px}
+.hero p{color:var(--sub);margin:6px 0 0;max-width:40em;font-size:14px}
+.notice{border:1px solid rgba(230,178,90,.45);border-left:3px solid var(--warn);background:var(--panel);border-radius:10px;padding:10px 14px;margin-top:14px;font-size:13.5px;color:var(--warn)}
+
+/* 場所・棚・品目 */
+.loc{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:14px;margin-top:14px;overflow:hidden}
+.loc>.head{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line2)}
+.loc .code{font:800 22px/1 var(--serif);font-style:italic;color:var(--gold);min-width:30px}
+.loc .nm{flex:1;font:700 17px/1.3 var(--serif);min-width:0}
+.loc .nm small{display:block;font:11px/1.4 var(--mono);color:var(--sub);letter-spacing:.1em;margin-top:3px}
+.loc>.body{padding:4px 12px 14px}
+.shelf{border:1px solid var(--line2);border-radius:10px;background:var(--field);margin-top:10px;overflow:hidden}
+.shelf>.head{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line2)}
+.no{font:700 14px/1 var(--mono);letter-spacing:.08em;color:#1a1206;background:var(--gold-grad);padding:5px 8px;border-radius:5px;white-space:nowrap}
+.shelf .nm{flex:1;font-weight:700;min-width:0;overflow-wrap:anywhere}
+.shelf .cnt{font-size:12px;color:var(--sub);white-space:nowrap}
+.ic{background:none;border:1px solid var(--line2);color:var(--sub);border-radius:6px;width:30px;height:30px;cursor:pointer;line-height:1;padding:0;flex:none}
+.ic:hover{border-color:var(--gold);color:var(--gold)}
+.items{padding:4px 12px 10px}
+.it{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:9px 0;border-bottom:1px dashed var(--line2);align-items:center}
+.it:last-child{border-bottom:0}
+.it .n{font-weight:700;overflow-wrap:anywhere}
+.it .n .star{color:var(--gold-hi);margin-right:4px}
+.it .d{grid-column:1;font-size:12.5px;color:var(--sub);font-variant-numeric:tabular-nums}
+.it .ops{grid-row:1/3;display:flex;gap:6px}
+.empty{color:var(--sub);font-size:13.5px;padding:10px 0}
+.form{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:4px 16px 16px;margin-top:12px}
+.two{display:grid;gap:0 12px}
+@media(min-width:600px){.two{grid-template-columns:1fr 1fr}}
+.three{display:grid;gap:0 12px;grid-template-columns:1fr 1fr}
+@media(min-width:600px){.three{grid-template-columns:1fr 1fr 1fr}}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.cb{border:1px solid var(--line2);background:var(--field);color:var(--sub);padding:6px 12px;border-radius:99px;cursor:pointer;font-size:13px}
+.cb.on{border-color:var(--gold);color:#1a1206;background:var(--gold-grad);font-weight:700}
+.note{font-size:12px;color:var(--sub);margin-top:5px}
+.confirm{display:inline-flex;gap:6px;align-items:center}
+
+/* 棚卸し */
+.sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:14px}
+.tile{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.tile .k{font-size:11.5px;color:var(--sub);letter-spacing:.06em}
+.tile .v{font:700 22px/1.2 var(--serif);margin-top:4px;font-variant-numeric:tabular-nums}
+.tile .v small{font-size:13px;color:var(--sub);font-family:system-ui}
+.prog{height:3px;background:var(--line2);border-radius:2px;margin-top:10px;overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:var(--gold-grad);transition:width .3s}
+.row{display:grid;grid-template-columns:1fr 110px;gap:10px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--line2)}
+.row:last-child{border-bottom:0}
+.row .n{font-weight:700;overflow-wrap:anywhere}
+.row .d{font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums}
+.row input{text-align:right;font-variant-numeric:tabular-nums;padding:9px 10px;font-size:18px}
+.row input.done{border-color:rgba(139,208,160,.5)}
+.hist{margin-top:10px}
+.hist .r{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px dashed var(--line2);font-size:14px;font-variant-numeric:tabular-nums}
+.hist .r b{font-family:var(--serif)}
+.mr{margin-top:16px}
+.mr .eq{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:8px;font-variant-numeric:tabular-nums}
+.mr .eq div{background:var(--field);border:1px solid var(--line2);border-radius:8px;padding:8px 10px}
+.mr .eq .k{font-size:11px;color:var(--sub)}
+.mr .eq .v{font-weight:700;font-size:16px}
+.mr .eq .v.big{color:var(--gold-hi);font-size:20px;font-family:var(--serif)}
+
+/* 書き出し */
+.card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
+.card h3{font-size:17px}
+.card p{color:var(--sub);font-size:13.5px;margin:6px 0 0}
+table{border-collapse:collapse;width:100%;font-size:12px;font-variant-numeric:tabular-nums}
+th,td{border-bottom:1px solid var(--line2);padding:5px 8px;text-align:left;white-space:nowrap}
+th{color:var(--gold);font-weight:600}
+.tw{overflow-x:auto;margin-top:10px;max-height:260px;border:1px solid var(--line2);border-radius:8px}
+.toast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--gold-grad);color:#1a1206;font-weight:700;padding:10px 18px;border-radius:99px;font-size:14px;z-index:50;max-width:90vw}
+.filebtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px dashed var(--gold);color:var(--gold);padding:9px 14px;border-radius:8px;font-weight:600;margin:0;font-size:14px}
+.filebtn input{display:none}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="bar"><div class="in">
+  <div class="mark"><span class="wz">ワザモノ</span><span class="wk">works</span></div>
+  <select id="store" aria-label="店舗"></select>
+  <div class="tabs" role="tablist">
+    <button class="tab on" data-v="reg" role="tab">棚の登録</button>
+    <button class="tab" data-v="count" role="tab">棚卸し</button>
+    <button class="tab" data-v="out" role="tab">書き出し</button>
+  </div>
+</div></div>
+<div class="wrap"><div id="app"></div></div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+/* =========================================================
+   棚卸し 棚マスタ
+   ・管理者が営業後に店へ入り、場所ごとに棚へ番号を振って品目を登録する
+   ・店長はその番号順に数量を入れるだけ（棚卸しモード）
+   ・端末に自動保存。品目マスタと棚卸し結果はタブ区切りでコピーしてスプレッドシートへ貼る
+   ・JSON で全データを書き出せる（TEBANASHI 本体へ取り込む想定の形）
+   ========================================================= */
+const STORES = ['鯛ドロボー','島ドロボー','志知カフェ','麺ドロボー','牛と米','AWAWA','わぎゅぎゅ','北淡シマウマ'];
+const LOC_PRESETS = [['R','冷蔵庫'],['F','冷凍庫'],['D','乾物・調味料'],['K','米・油'],['B','ドリンク'],['S','資材・備品'],['O','その他']];
+const UNITS = ['パック','本','袋','箱','ケース','缶','kg','個','尾','枚'];
+const CONV_UNITS = ['g','個','ml','尾','枚'];
+const KEY = 'tana:v1';
+
+const $ = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+const yen = n => '¥' + Math.round(n || 0).toLocaleString('ja-JP');
+const num = v => { const n = parseFloat(String(v ?? '').replace(/[,，]/g, '')); return isNaN(n) ? null : n; };
+const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };
+
+/* ---------- 初期データ：鯛ドロボー（理想と現実のFシートのレシピ単価＋8月MRシートの品目から） ---------- */
+function seedTai(){
+  const it = (name, unit, conv, convUnit, price, vendor, star, memo) => ({ id:uid('i'), name, unit, conv, convUnit, price, vendor, star:!!star, memo:memo||'' });
+  return {
+    note:'配置は仮です。10/20 の棚卸しで現地に合わせて直してください。単価はレシピマスターの仕入れ単価（8月時点）。',
+    locations:[
+      { id:uid('l'), code:'R', name:'冷蔵庫', next:4, shelves:[
+        { id:uid('s'), no:1, name:'刺身（上段）', items:[
+          it('鯛（捌き後）','パック',350,'g',1701,'',1),
+          it('本マグロ赤身','パック',600,'g',3240,'',1),
+          it('本マグロ中トロ','パック',500,'g',6480,'',1),
+          it('ネギトロ／たたき','パック',500,'g',1298,'',1),
+          it('サーモン','パック',800,'g',4644,'',1),
+          it('生キハダ','kg',1000,'g',null,'魚福',1,'単価は店長記入'),
+        ]},
+        { id:uid('s'), no:2, name:'うに・いくら', items:[
+          it('うに','箱',100,'g',1188,'',1),
+          it('いくら','パック',500,'g',5700,'',1),
+        ]},
+        { id:uid('s'), no:3, name:'卵・野菜', items:[
+          it('卵（蘭王）','ケース',null,'個',null,'',1,'1ケース何個か要確認'),
+          it('大和芋','kg',1000,'g',null,'',0),
+          it('玉ねぎ（オニスラ用）','箱',null,'g',null,'',0,'8月メモ：1日2箱'),
+          it('わさび','本',null,'g',null,'',0),
+        ]},
+      ]},
+      { id:uid('l'), code:'F', name:'冷凍庫', next:2, shelves:[
+        { id:uid('s'), no:1, name:'エビ', items:[
+          it('伸ばしエビ','袋',null,'尾',null,'',1,'8月の廃棄 17,442円'),
+          it('有頭エビ','袋',14,'尾',null,'',0),
+        ]},
+      ]},
+      { id:uid('l'), code:'D', name:'乾物・調味料', next:3, shelves:[
+        { id:uid('s'), no:1, name:'調味料', items:[
+          it('甘口醤油','本',null,'ml',null,'',0),
+          it('三杯酢（高橋）','本',null,'ml',1058,'',0),
+          it('濃口醤油','本',null,'ml',null,'',0),
+          it('みりん','本',null,'ml',null,'',0),
+        ]},
+        { id:uid('s'), no:2, name:'乾物', items:[
+          it('鰹節','袋',null,'g',1617,'',0,'8月メモ：1日2袋'),
+          it('刻み海苔','袋',100,'g',null,'',0),
+          it('天ぷら粉','袋',null,'g',null,'',0),
+        ]},
+      ]},
+      { id:uid('l'), code:'K', name:'米・油', next:2, shelves:[
+        { id:uid('s'), no:1, name:'米・油', items:[
+          it('米（つや姫）','袋',5000,'g',null,'',1),
+          it('油','缶',null,'ml',null,'',0),
+        ]},
+      ]},
+    ],
+    counts:[],
+  };
+}
+
+/* ---------- 保存 ---------- */
+let DB = null;
+function load(){
+  try { DB = JSON.parse(localStorage.getItem(KEY)); } catch (e) { DB = null; }
+  if (!DB || !DB.stores) DB = { ver:1, stores:{} };
+  if (!DB.stores['鯛ドロボー']) DB.stores['鯛ドロボー'] = seedTai();
+  STORES.forEach(s => { if (!DB.stores[s]) DB.stores[s] = { note:'', locations:[], counts:[] }; });
+}
+let saveT;
+function save(){ clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch (e) { toast('端末に保存できません。書き出しでJSONを控えてください'); } }, 150); }
+
+const S = { store:'鯛ドロボー', view:'reg', form:null, open:{}, confirmId:null, draftCount:null };
+try { const u = JSON.parse(localStorage.getItem(KEY + ':ui')); if (u && STORES.includes(u.store)) S.store = u.store; } catch (e) {}
+const ui = () => { try { localStorage.setItem(KEY + ':ui', JSON.stringify({ store:S.store })); } catch (e) {} };
+const cur = () => DB.stores[S.store];
+const shelfNo = (loc, sh) => loc.code + '-' + String(sh.no).padStart(2, '0');
+const allItems = st => st.locations.flatMap(l => l.shelves.flatMap(s => s.items.map(i => ({ loc:l, shelf:s, item:i }))));
+const lastCount = st => st.counts.length ? st.counts[st.counts.length - 1] : null;
+
+/* ---------- 画面 ---------- */
+function boot(){
+  load();
+  const sel = $('#store');
+  sel.innerHTML = STORES.map(s => `<option ${s === S.store ? 'selected' : ''}>${esc(s)}</option>`).join('');
+  sel.onchange = () => { S.store = sel.value; S.form = null; S.draftCount = null; ui(); render(); };
+  $$('.tab').forEach(b => b.onclick = () => { S.view = b.dataset.v; $$('.tab').forEach(x => x.classList.toggle('on', x === b)); render(); });
+  $('#app').addEventListener('click', onClick);
+  $('#app').addEventListener('input', onInput);
+  $('#app').addEventListener('change', onChange);
+  render();
+}
+function render(){ ({ reg:renderReg, count:renderCount, out:renderOut })[S.view](); }
+
+/* --- 棚の登録 --- */
+function renderReg(){
+  const st = cur();
+  const n = allItems(st).length, stars = allItems(st).filter(x => x.item.star).length;
+  $('#app').innerHTML = `
+    <div class="hero"><div class="eyebrow">SHELF MASTER</div><h2>${esc(S.store)}の棚</h2>
+      <p>場所ごとに棚へ番号を振り、その棚にある品目を登録します。番号は棚に貼るラベルと同じにしてください。品目 ${n}・重点 ★${stars}</p>
+      ${st.note ? `<div class="notice">${esc(st.note)}</div>` : ''}
+    </div>
+    ${st.locations.map(locHtml).join('') || '<div class="empty">まだ場所がありません。下から追加してください。</div>'}
+    <div class="form"><label>場所を追加</label>
+      <div class="chips">${LOC_PRESETS.map(([c, nm]) => `<button class="cb" data-act="addloc" data-code="${c}" data-name="${esc(nm)}">${c}　${esc(nm)}</button>`).join('')}</div>
+      <div class="two"><div><label>自由に追加（名前）</label><input id="nlname" placeholder="例：2階冷蔵庫"></div><div><label>記号（1〜2文字）</label><input id="nlcode" placeholder="例：R2" maxlength="2"></div></div>
+      <div class="actions"><button class="btn ghost sm" data-act="addloc-free">＋ この場所を追加</button></div>
+    </div>`;
+}
+function locHtml(loc){
+  return `<section class="loc" data-loc="${loc.id}">
+    <div class="head"><span class="code">${esc(loc.code)}</span>
+      <div class="nm">${esc(loc.name)}<small>${loc.shelves.length} 棚・${loc.shelves.reduce((a, s) => a + s.items.length, 0)} 品目</small></div>
+      <button class="ic" data-act="loc-up" title="上へ">↑</button><button class="ic" data-act="loc-down" title="下へ">↓</button>
+      ${delBtn('loc', loc.id)}
+    </div>
+    <div class="body">
+      ${loc.shelves.map(sh => shelfHtml(loc, sh)).join('')}
+      <div class="actions"><button class="btn ghost sm" data-act="addshelf">＋ 棚を追加（${esc(loc.code)}-${String(loc.next).padStart(2, '0')}）</button></div>
+    </div></section>`;
+}
+function shelfHtml(loc, sh){
+  const editing = S.form && S.form.shelf === sh.id;
+  return `<div class="shelf" data-shelf="${sh.id}">
+    <div class="head"><span class="no">${esc(shelfNo(loc, sh))}</span>
+      <span class="nm" data-act="rename-shelf" title="タップで名前を変更">${esc(sh.name || '（名前なし）')}</span>
+      <span class="cnt">${sh.items.length}品目</span>
+      <button class="ic" data-act="shelf-up" title="上へ">↑</button><button class="ic" data-act="shelf-down" title="下へ">↓</button>
+      ${delBtn('shelf', sh.id)}
+    </div>
+    <div class="items">
+      ${sh.items.map(i => `<div class="it" data-item="${i.id}">
+        <div class="n">${i.star ? '<span class="star">★</span>' : ''}${esc(i.name)}</div>
+        <div class="d">${esc(i.unit)}${i.conv ? `・1${esc(i.unit)}＝${i.conv}${esc(i.convUnit)}` : ''}${i.price != null ? `・${yen(i.price)}/${esc(i.unit)}` : '・<span style="color:var(--warn)">単価未入力</span>'}${i.vendor ? `・${esc(i.vendor)}` : ''}${i.memo ? `　${esc(i.memo)}` : ''}</div>
+        <div class="ops"><button class="ic" data-act="edit-item" title="編集">✎</button>${delBtn('item', i.id)}</div>
+      </div>`).join('') || '<div class="empty">品目なし</div>'}
+      ${editing ? itemForm(S.form) : `<div class="actions"><button class="btn ghost sm" data-act="new-item">＋ 品目を追加</button></div>`}
+    </div></div>`;
+}
+function delBtn(kind, id){
+  if (S.confirmId === id) return `<span class="confirm"><button class="btn danger sm" data-act="del-${kind}">本当に削除</button><button class="ic" data-act="cancel-del">×</button></span>`;
+  return `<button class="ic" data-act="ask-del" data-id="${id}" title="削除">🗑</button>`;
+}
+function itemForm(f){
+  return `<div class="form" id="itemform">
+    <label>品目名 <b style="color:var(--gold)">必須</b></label><input id="f-name" value="${esc(f.name)}" placeholder="例：本マグロ赤身" autocomplete="off">
+    <label>数える単位（店が自然に数えている単位）</label>
+    <div class="chips" id="f-units">${UNITS.map(u => `<button class="cb ${f.unit === u ? 'on' : ''}" data-act="set-unit" data-u="${u}">${u}</button>`).join('')}</div>
+    <div class="three">
+      <div><label>1単位＝</label><input id="f-conv" inputmode="decimal" value="${f.conv ?? ''}" placeholder="例：600"></div>
+      <div><label>換算の単位</label><select id="f-convu">${CONV_UNITS.map(u => `<option ${f.convUnit === u ? 'selected' : ''}>${u}</option>`).join('')}</select></div>
+      <div><label>仕入れ値（円 / 1単位）</label><input id="f-price" inputmode="decimal" value="${f.price ?? ''}" placeholder="例：3240"></div>
+    </div>
+    <div class="two">
+      <div><label>仕入れ先</label><input id="f-vendor" value="${esc(f.vendor)}" placeholder="例：魚福"></div>
+      <div><label>メモ</label><input id="f-memo" value="${esc(f.memo)}" placeholder="例：1ケース何個か要確認"></div>
+    </div>
+    <div class="actions"><button class="cb ${f.star ? 'on' : ''}" data-act="toggle-star">★ 重点食材（毎回数える）</button></div>
+    <div class="note">換算はレシピ（g・個）とつなぐためのもの。分からなければ空欄で、単価だけでも金額は出ます。</div>
+    <div class="actions"><button class="btn" data-act="save-item">${f.editingId ? '更新' : '追加'}</button><button class="btn ghost" data-act="cancel-item">やめる</button></div>
+  </div>`;
+}
+
+/* --- 棚卸し --- */
+function renderCount(){
+  const st = cur(); const rows = allItems(st); const last = lastCount(st);
+  if (!S.draftCount) S.draftCount = loadDraft() || { date:today(), by:'', qty:{}, purchases:'', sales:'' };
+  const d = S.draftCount;
+  const done = rows.filter(r => num(d.qty[r.item.id]) != null).length;
+  const total = rows.reduce((a, r) => a + (num(d.qty[r.item.id]) || 0) * (r.item.price || 0), 0);
+  const starTotal = rows.filter(r => r.item.star).reduce((a, r) => a + (num(d.qty[r.item.id]) || 0) * (r.item.price || 0), 0);
+  const noPrice = rows.filter(r => r.item.price == null && num(d.qty[r.item.id])).length;
+  const prevTotal = last ? last.total : null;
+  const pur = num(d.purchases), sales = num(d.sales);
+  const cogs = prevTotal != null && pur != null ? prevTotal + pur - total : null;
+  const mr = cogs != null && sales ? cogs / sales * 100 : null;
+  let grouped = '';
+  st.locations.forEach(loc => loc.shelves.forEach(sh => {
+    if (!sh.items.length) return;
+    grouped += `<div class="shelf"><div class="head"><span class="no">${esc(shelfNo(loc, sh))}</span><span class="nm">${esc(loc.name)}　${esc(sh.name)}</span></div><div class="items">
+      ${sh.items.map(i => { const v = d.qty[i.id] ?? ''; const pv = last && last.qty[i.id]; return `<div class="row">
+        <div><div class="n">${i.star ? '<span class="star">★</span>' : ''}${esc(i.name)}</div><div class="d">${esc(i.unit)}${i.price != null ? `・${yen(i.price)}/${esc(i.unit)}` : '・単価未入力'}${pv != null ? `・前回 ${pv}` : ''}${num(v) != null && i.price != null ? `・${yen(num(v) * i.price)}` : ''}</div></div>
+        <input class="${num(v) != null ? 'done' : ''}" data-qty="${i.id}" inputmode="decimal" placeholder="${esc(i.unit)}" value="${esc(v)}" aria-label="${esc(i.name)}の数量">
+      </div>`; }).join('')}
+    </div></div>`;
+  }));
+  $('#app').innerHTML = `
+    <div class="hero"><div class="eyebrow">STOCK COUNT</div><h2>${esc(S.store)}の棚卸し</h2>
+      <p>棚番号の順に数えて、数量を入れるだけです。1行ごとに端末へ保存されます。最後に「この棚卸しを締める」を押してください。</p></div>
+    <div class="two"><div><label>棚卸し日</label><input type="date" id="c-date" value="${esc(d.date)}"></div><div><label>数えた人</label><input id="c-by" value="${esc(d.by)}" placeholder="例：水谷"></div></div>
+    <div class="sum">
+      <div class="tile"><div class="k">入力済み</div><div class="v">${done}<small> / ${rows.length}</small></div><div class="prog"><i style="width:${rows.length ? done / rows.length * 100 : 0}%"></i></div></div>
+      <div class="tile"><div class="k">今回の在庫金額</div><div class="v">${yen(total)}</div>${noPrice ? `<div class="note warn" style="color:var(--warn)">単価未入力が ${noPrice} 品</div>` : ''}</div>
+      <div class="tile"><div class="k">うち ★重点</div><div class="v">${yen(starTotal)}</div></div>
+      <div class="tile"><div class="k">前回在庫（${last ? esc(last.date) : 'なし'}）</div><div class="v">${prevTotal != null ? yen(prevTotal) : '－'}</div></div>
+    </div>
+    ${rows.length ? grouped : '<div class="empty">品目がありません。「棚の登録」で先に棚と品目を作ってください。</div>'}
+    <div class="card mr"><h3>材料費の式（前回在庫＋仕入れ−今回在庫）</h3>
+      <p>前回の棚卸しからこの日までの仕入れ合計と売上を入れると、実際の材料費率が出ます。</p>
+      <div class="two"><div><label>期間の仕入れ合計（円）</label><input id="c-pur" inputmode="decimal" value="${esc(d.purchases)}" placeholder="請求書・納品書の合計"></div><div><label>期間の売上（円）</label><input id="c-sales" inputmode="decimal" value="${esc(d.sales)}" placeholder="POSの売上"></div></div>
+      <div class="eq">
+        <div><div class="k">前回在庫</div><div class="v">${prevTotal != null ? yen(prevTotal) : '－'}</div></div>
+        <div><div class="k">＋ 仕入れ</div><div class="v">${pur != null ? yen(pur) : '－'}</div></div>
+        <div><div class="k">− 今回在庫</div><div class="v">${yen(total)}</div></div>
+        <div><div class="k">＝ 材料費</div><div class="v">${cogs != null ? yen(cogs) : '－'}</div></div>
+        <div><div class="k">材料費率（MR）</div><div class="v big">${mr != null ? mr.toFixed(1) + '%' : '－'}</div></div>
+      </div>
+    </div>
+    <div class="actions"><button class="btn" data-act="close-count" ${rows.length ? '' : 'disabled'}>この棚卸しを締める</button><button class="btn ghost" data-act="clear-count">入力をすべて消す</button></div>
+    ${st.counts.length ? `<div class="card"><h3>これまでの棚卸し</h3><div class="hist">${st.counts.slice().reverse().map(c => `<div class="r"><span><b>${esc(c.date)}</b>　${esc(c.by || '')}　${c.mr != null ? `MR ${c.mr.toFixed(1)}%` : ''}</span><span>${yen(c.total)}</span><span>${S.confirmId === c.id ? `<span class="confirm"><button class="btn danger sm" data-act="del-count" data-id="${c.id}">本当に削除</button><button class="ic" data-act="cancel-del">×</button></span>` : `<button class="ic" data-act="ask-del" data-id="${c.id}">🗑</button>`}</span></div>`).join('')}</div></div>` : ''}
+  `;
+}
+
+/* --- 書き出し --- */
+function masterRows(st){
+  const h = ['店舗','場所記号','場所','棚番号','棚名','品目','数える単位','1単位の換算','換算単位','仕入れ値(円/単位)','仕入れ先','重点','メモ'];
+  const r = allItems(st).map(({ loc, shelf, item }) => [S.store, loc.code, loc.name, shelfNo(loc, shelf), shelf.name, item.name, item.unit, item.conv ?? '', item.convUnit ?? '', item.price ?? '', item.vendor, item.star ? '★' : '', item.memo]);
+  return [h, ...r];
+}
+function countRows(st, c){
+  const h = ['店舗','棚卸し日','数えた人','棚番号','品目','数える単位','数量','仕入れ値(円/単位)','金額','重点'];
+  const r = allItems(st).map(({ loc, shelf, item }) => { const q = c.qty[item.id]; return [S.store, c.date, c.by, shelfNo(loc, shelf), item.name, item.unit, q ?? '', item.price ?? '', q != null && item.price != null ? Math.round(q * item.price) : '', item.star ? '★' : '']; });
+  return [h, ...r];
+}
+const tsv = rows => rows.map(r => r.map(v => String(v ?? '').replace(/[\t\r\n]+/g, ' ')).join('\t')).join('\n');
+function tableHtml(rows){ return `<div class="tw"><table><thead><tr>${rows[0].map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.slice(1).map(r => `<tr>${r.map(v => `<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`; }
+function renderOut(){
+  const st = cur(); const last = lastCount(st);
+  const m = masterRows(st); const c = last ? countRows(st, last) : null;
+  $('#app').innerHTML = `
+    <div class="hero"><div class="eyebrow">EXPORT</div><h2>${esc(S.store)}の書き出し</h2>
+      <p>「コピー」したものをスプレッドシートのセルに貼ると、そのまま表になります。JSON は TEBANASHI 本体へ取り込むための形で、別の端末への引き継ぎにも使えます。</p></div>
+    <div class="card"><h3>品目マスタ（${m.length - 1}行）</h3><p>棚番号・品目・単位・換算・単価・仕入れ先。理想と現実のFの品目表の元になります。</p>
+      ${m.length > 1 ? tableHtml(m) : '<div class="empty">品目がありません</div>'}
+      <div class="actions"><button class="btn" data-act="copy" data-what="master">📋 コピー（スプレッドシート用）</button><button class="btn ghost" data-act="dl" data-what="master">CSVをダウンロード</button></div></div>
+    <div class="card"><h3>最新の棚卸し ${last ? `（${esc(last.date)}・${yen(last.total)}）` : ''}</h3><p>${last ? '棚番号順の数量と金額。' : 'まだ締めた棚卸しがありません。'}</p>
+      ${c ? tableHtml(c) : ''}
+      <div class="actions"><button class="btn" data-act="copy" data-what="count" ${c ? '' : 'disabled'}>📋 コピー（スプレッドシート用）</button><button class="btn ghost" data-act="dl" data-what="count" ${c ? '' : 'disabled'}>CSVをダウンロード</button></div></div>
+    <div class="card"><h3>JSON（この店の全データ）</h3><p>棚・品目・棚卸し履歴をすべて含みます。TEBANASHI 本体への取り込み、または別の端末で「取り込む」に貼って引き継ぎます。</p>
+      <div class="actions"><button class="btn" data-act="copy" data-what="json">📋 JSONをコピー</button><button class="btn ghost" data-act="dl" data-what="json">JSONをダウンロード</button></div>
+      <label>取り込む（JSONを貼る、またはファイルを選ぶ）</label><textarea id="imp" placeholder='{"locations":[...],"counts":[...]}'></textarea>
+      <div class="actions"><button class="btn ghost" data-act="import">この店に取り込む（上書き）</button><label class="filebtn">📂 ファイルを選ぶ<input type="file" accept=".json,application/json" id="impfile"></label></div></div>
+    <div class="card"><h3>この店のデータを消す</h3><p>端末からこの店の棚・品目・棚卸し履歴をすべて消します。先にJSONを控えてください。</p>
+      <div class="actions">${S.confirmId === 'wipe' ? `<span class="confirm"><button class="btn danger" data-act="wipe">本当に消す</button><button class="ic" data-act="cancel-del">×</button></span>` : `<button class="btn danger" data-act="ask-del" data-id="wipe">すべて消す</button>`}</div></div>
+    <textarea id="clip" style="position:fixed;left:-9999px;top:0;height:1px" aria-hidden="true"></textarea>`;
+}
+
+/* ---------- 操作 ---------- */
+function find(id){
+  for (const loc of cur().locations) { if (loc.id === id) return { loc }; for (const sh of loc.shelves) { if (sh.id === id) return { loc, sh }; for (const it of sh.items) if (it.id === id) return { loc, sh, it }; } }
+  return null;
+}
+function onClick(e){
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const act = b.dataset.act, st = cur();
+  const locEl = b.closest('[data-loc]'), shEl = b.closest('[data-shelf]'), itEl = b.closest('[data-item]');
+  const loc = locEl && st.locations.find(l => l.id === locEl.dataset.loc);
+  const sh = loc && shEl && loc.shelves.find(s => s.id === shEl.dataset.shelf);
+  const it = sh && itEl && sh.items.find(i => i.id === itEl.dataset.item);
+  const move = (arr, i, d) => { const j = i + d; if (j < 0 || j >= arr.length) return; [arr[i], arr[j]] = [arr[j], arr[i]]; };
+  switch (act) {
+    case 'addloc': addLoc(b.dataset.code, b.dataset.name); break;
+    case 'addloc-free': { const nm = $('#nlname').value.trim(), cd = $('#nlcode').value.trim().toUpperCase(); if (!nm || !cd) return toast('名前と記号を入れてください'); addLoc(cd, nm); break; }
+    case 'loc-up': move(st.locations, st.locations.indexOf(loc), -1); save(); render(); break;
+    case 'loc-down': move(st.locations, st.locations.indexOf(loc), 1); save(); render(); break;
+    case 'addshelf': loc.shelves.push({ id:uid('s'), no:loc.next++, name:'', items:[] }); save(); render(); break;
+    case 'shelf-up': move(loc.shelves, loc.shelves.indexOf(sh), -1); save(); render(); break;
+    case 'shelf-down': move(loc.shelves, loc.shelves.indexOf(sh), 1); save(); render(); break;
+    case 'rename-shelf': { const el = b; const inp = document.createElement('input'); inp.value = sh.name; inp.placeholder = '棚の名前（例：上段・野菜室）'; inp.style.cssText = 'padding:6px 8px;font-size:14px'; el.replaceWith(inp); inp.focus();
+      let done = false; const fin = () => { if (done) return; done = true; sh.name = inp.value.trim(); save(); render(); }; inp.onblur = fin; inp.onkeydown = ev => { if (ev.key === 'Enter') inp.blur(); }; break; }
+    case 'new-item': S.form = { shelf:sh.id, name:'', unit:UNITS[0], conv:'', convUnit:'g', price:'', vendor:'', memo:'', star:false, editingId:null }; render(); focusForm(); break;
+    case 'edit-item': S.form = { shelf:sh.id, ...it, editingId:it.id }; render(); focusForm(); break;
+    case 'set-unit': readForm(); S.form.unit = b.dataset.u; render(); break;
+    case 'toggle-star': readForm(); S.form.star = !S.form.star; render(); break;
+    case 'cancel-item': S.form = null; render(); break;
+    case 'save-item': saveItem(); break;
+    case 'ask-del': S.confirmId = b.dataset.id; render(); break;
+    case 'cancel-del': S.confirmId = null; render(); break;
+    case 'del-loc': st.locations = st.locations.filter(l => l !== loc); S.confirmId = null; save(); render(); break;
+    case 'del-shelf': loc.shelves = loc.shelves.filter(s => s !== sh); S.confirmId = null; save(); render(); break;
+    case 'del-item': sh.items = sh.items.filter(i => i !== it); S.confirmId = null; save(); render(); break;
+    case 'del-count': st.counts = st.counts.filter(c => c.id !== b.dataset.id); S.confirmId = null; save(); render(); break;
+    case 'close-count': closeCount(); break;
+    case 'clear-count': S.draftCount = { date:today(), by:S.draftCount.by, qty:{}, purchases:'', sales:'' }; saveDraft(); render(); break;
+    case 'copy': copyOut(b.dataset.what); break;
+    case 'dl': download(b.dataset.what); break;
+    case 'import': importJson($('#imp').value); break;
+    case 'wipe': DB.stores[S.store] = { note:'', locations:[], counts:[] }; S.confirmId = null; S.draftCount = null; save(); toast('消しました'); render(); break;
+  }
+}
+function addLoc(code, name){
+  const st = cur();
+  if (st.locations.some(l => l.code === code)) { let n = 2; while (st.locations.some(l => l.code === code + n)) n++; code = code + n; }
+  st.locations.push({ id:uid('l'), code, name, next:1, shelves:[] }); save(); render();
+}
+function focusForm(){ const el = $('#f-name'); if (el) { el.scrollIntoView({ block:'center' }); el.focus(); } }
+function readForm(){
+  const f = S.form; if (!f || !$('#itemform')) return;
+  f.name = $('#f-name').value; f.conv = $('#f-conv').value; f.convUnit = $('#f-convu').value; f.price = $('#f-price').value; f.vendor = $('#f-vendor').value; f.memo = $('#f-memo').value;
+}
+function saveItem(){
+  readForm(); const f = S.form; const name = f.name.trim(); if (!name) { toast('品目名を入れてください'); return $('#f-name').focus(); }
+  const r = find(f.shelf); if (!r) return;
+  const rec = { id:f.editingId || uid('i'), name, unit:f.unit, conv:num(f.conv), convUnit:f.convUnit, price:num(f.price), vendor:f.vendor.trim(), star:!!f.star, memo:f.memo.trim() };
+  if (f.editingId) { const i = r.sh.items.findIndex(x => x.id === f.editingId); r.sh.items[i] = rec; S.form = null; }
+  else { r.sh.items.push(rec); S.form = { ...S.form, name:'', conv:'', price:'', memo:'', star:false, editingId:null }; }
+  save(); render(); if (!f.editingId) focusForm(); toast(f.editingId ? '更新しました' : '追加しました');
+}
+function onInput(e){
+  const t = e.target;
+  if (t.dataset.qty) { S.draftCount.qty[t.dataset.qty] = t.value; t.classList.toggle('done', num(t.value) != null); saveDraft(); updateCountTiles(); return; }
+  if (t.id === 'c-by') { S.draftCount.by = t.value; saveDraft(); }
+  if (t.id === 'c-pur') { S.draftCount.purchases = t.value; saveDraft(); updateCountTiles(); }
+  if (t.id === 'c-sales') { S.draftCount.sales = t.value; saveDraft(); updateCountTiles(); }
+}
+function onChange(e){
+  const t = e.target;
+  if (t.id === 'c-date') { S.draftCount.date = t.value; saveDraft(); }
+  if (t.id === 'impfile' && t.files[0]) { const fr = new FileReader(); fr.onload = () => importJson(fr.result); fr.readAsText(t.files[0]); }
+}
+let tileT;
+function updateCountTiles(){ clearTimeout(tileT); tileT = setTimeout(() => { const y = scrollY; const a = document.activeElement; const id = a && a.dataset.qty; renderCount(); scrollTo(0, y); if (id) { const el = $(`[data-qty="${id}"]`); if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } } else if (a && a.id) { const el = $('#' + a.id); if (el) el.focus(); } }, 400); }
+const draftKey = () => KEY + ':draft:' + S.store;
+function saveDraft(){ try { localStorage.setItem(draftKey(), JSON.stringify(S.draftCount)); } catch (e) {} }
+function loadDraft(){ try { return JSON.parse(localStorage.getItem(draftKey())); } catch (e) { return null; } }
+function closeCount(){
+  const st = cur(), d = S.draftCount, rows = allItems(st);
+  const qty = {}; rows.forEach(r => { const q = num(d.qty[r.item.id]); if (q != null) qty[r.item.id] = q; });
+  if (!Object.keys(qty).length) return toast('数量が1つも入っていません');
+  const total = rows.reduce((a, r) => a + (qty[r.item.id] || 0) * (r.item.price || 0), 0);
+  const last = lastCount(st), pur = num(d.purchases), sales = num(d.sales);
+  const cogs = last && pur != null ? last.total + pur - total : null;
+  st.counts.push({ id:uid('c'), date:d.date || today(), by:d.by.trim(), qty, total:Math.round(total), purchases:pur, sales, cogs:cogs != null ? Math.round(cogs) : null, mr:cogs != null && sales ? cogs / sales * 100 : null, closedAt:new Date().toISOString() });
+  st.counts.sort((a, b) => a.date < b.date ? -1 : 1);
+  S.draftCount = { date:today(), by:d.by, qty:{}, purchases:'', sales:'' }; saveDraft(); save(); render(); toast('締めました：' + yen(total));
+}
+function copyOut(what){
+  const st = cur(); const last = lastCount(st);
+  const text = what === 'master' ? tsv(masterRows(st)) : what === 'count' ? tsv(countRows(st, last)) : JSON.stringify({ store:S.store, exportedAt:new Date().toISOString(), ...st }, null, 1);
+  const fallback = () => { const ta = $('#clip'); ta.value = text; ta.focus(); ta.select(); try { document.execCommand('copy'); toast('コピーしました'); } catch (e) { toast('コピーできませんでした'); } };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => toast('コピーしました。スプレッドシートのセルに貼ってください'), fallback); else fallback();
+}
+function download(what){
+  const st = cur(); const last = lastCount(st);
+  const csv = rows => '﻿' + rows.map(r => r.map(v => '"' + String(v ?? '').replace(/"/g, '""') + '"').join(',')).join('\r\n');
+  const [text, name, type] = what === 'master' ? [csv(masterRows(st)), `${S.store}_品目マスタ_${today()}.csv`, 'text/csv'] : what === 'count' ? [csv(countRows(st, last)), `${S.store}_棚卸し_${last.date}.csv`, 'text/csv'] : [JSON.stringify({ store:S.store, exportedAt:new Date().toISOString(), ...st }, null, 1), `${S.store}_棚卸しデータ_${today()}.json`, 'application/json'];
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  toast('ダウンロードが始まらない場合は「コピー」を使ってください');
+}
+function importJson(text){
+  let j; try { j = JSON.parse(text); } catch (e) { return toast('JSONとして読めませんでした'); }
+  if (!j || !Array.isArray(j.locations)) return toast('この形式は取り込めません（locations がありません）');
+  DB.stores[S.store] = { note:j.note || '', locations:j.locations, counts:Array.isArray(j.counts) ? j.counts : [] };
+  S.draftCount = null; save(); toast('取り込みました'); S.view = 'reg'; $$('.tab').forEach(x => x.classList.toggle('on', x.dataset.v === 'reg')); render();
+}
+function toast(t){ const el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 2600); }
+
+boot();
+</script>
+
+</body>
+</html>
