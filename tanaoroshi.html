@@ -73,21 +73,21 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 .loc .nm small{display:block;font:11px/1.4 var(--mono);color:var(--sub);letter-spacing:.1em;margin-top:3px}
 .loc>.body{padding:4px 12px 14px}
 .shelf{border:1px solid var(--line2);border-radius:10px;background:var(--field);margin-top:10px;overflow:hidden}
-.shelf>.head{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line2)}
+.shelf>.head{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line2);flex-wrap:wrap}
 .no{font:700 14px/1 var(--mono);letter-spacing:.08em;color:#1a1206;background:var(--gold-grad);padding:5px 8px;border-radius:5px;white-space:nowrap}
-.shelf .nm{flex:1;font-weight:700;min-width:0;overflow-wrap:anywhere;cursor:text}
+.shelf .nm{flex:1 1 110px;font-weight:700;min-width:0;overflow-wrap:anywhere;cursor:text}
 .shelf .cnt{font-size:12px;color:var(--sub);white-space:nowrap}
 .ic{background:none;border:1px solid var(--line2);color:var(--sub);border-radius:6px;width:30px;height:30px;cursor:pointer;line-height:1;padding:0;flex:none}
 .ic:hover{border-color:var(--gold);color:var(--gold)}
 .items{padding:4px 12px 10px}
 .it{display:grid;grid-template-columns:auto 1fr auto;gap:2px 10px;padding:9px 0;border-bottom:1px dashed var(--line2);align-items:center}
 .it:last-child{border-bottom:0}
-.it .ph{grid-row:1/3;width:46px;height:46px;border-radius:7px;object-fit:cover;background:var(--panel2);border:1px solid var(--line2);display:block}
+.it .ph{grid-column:1;grid-row:1/3;width:46px;height:46px;border-radius:7px;object-fit:cover;background:var(--panel2);border:1px solid var(--line2);display:block}
 .it .ph.none{display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:11px}
-.it .n{font-weight:700;overflow-wrap:anywhere}
+.it .n{grid-column:2;grid-row:1;font-weight:700;overflow-wrap:anywhere;min-width:0}
 .it .n .star{color:var(--gold-hi);margin-right:4px}
-.it .d{grid-column:2;font-size:12.5px;color:var(--sub);font-variant-numeric:tabular-nums}
-.it .ops{grid-row:1/3;display:flex;gap:6px}
+.it .d{grid-column:2;grid-row:2;font-size:12.5px;color:var(--sub);font-variant-numeric:tabular-nums}
+.it .ops{grid-column:3;grid-row:1/3;display:flex;gap:6px}
 .empty{color:var(--sub);font-size:13.5px;padding:10px 0}
 .form{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:4px 16px 16px;margin-top:12px}
 .two{display:grid;gap:0 12px}
@@ -117,10 +117,10 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 .prog i{display:block;height:100%;width:0;background:var(--gold-grad);transition:width .3s}
 .row{display:grid;grid-template-columns:auto 1fr 110px;gap:10px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--line2)}
 .row:last-child{border-bottom:0}
-.row .ph{width:40px;height:40px;border-radius:6px;object-fit:cover;border:1px solid var(--line2);background:var(--panel2);display:block}
+.row .ph{grid-column:1;width:40px;height:40px;border-radius:6px;object-fit:cover;border:1px solid var(--line2);background:var(--panel2);display:block}
 .row .n{font-weight:700;overflow-wrap:anywhere}
 .row .d{font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums}
-.row input{text-align:right;font-variant-numeric:tabular-nums;padding:9px 10px;font-size:18px}
+.row input{grid-column:3;text-align:right;font-variant-numeric:tabular-nums;padding:9px 10px;font-size:18px}
 .row input.done{border-color:rgba(139,208,160,.5)}
 .hist{margin-top:10px}
 .hist .r{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px dashed var(--line2);font-size:14px;font-variant-numeric:tabular-nums}
@@ -202,7 +202,7 @@ const UNITS = ['個','パック','本','袋','箱','ケース','缶','kg','g','�
 const CONV_UNITS = ['g','個','ml','尾','枚'];
 const KEY = 'tana:v2';
 const POLL_MS = 30000;
-const APP_VER = '2026-10-12 r4';
+const APP_VER = '2026-10-12 r5';
 
 const $ = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => [...r.querySelectorAll(s)];
