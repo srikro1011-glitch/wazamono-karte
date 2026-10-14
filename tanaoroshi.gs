@@ -26,7 +26,7 @@ function loadHtml_() {
   var url = PropertiesService.getScriptProperties().getProperty('HTML_URL') || HTML_URL_DEFAULT;
   var html = UrlFetchApp.fetch(url, { muteHttpExceptions: true }).getContentText('UTF-8');
   if (html.length < 1000 || html.indexOf('<script>') < 0) throw new Error('画面を読み込めませんでした: ' + url);
-  try { cache.put(key, html, 300); } catch (e) {}   // 5分キャッシュ（100KB 以内なら入る）
+  try { cache.put(key, html, 90); } catch (e) {}   // 90秒キャッシュ（100KB 以内なら入る）
   return html;
 }
 function doGet(e) {

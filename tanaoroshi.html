@@ -172,6 +172,15 @@ th{color:var(--gold);font-weight:600}
 </head>
 <body>
 
+<script>
+/* 本体のスクリプトより先に置く：読み込み中に起きたエラーを画面に出す（GAS上で原因を見るため） */
+window.addEventListener('error', function (e) {
+  var el = document.getElementById('fatal');
+  if (!el) { el = document.createElement('div'); el.id = 'fatal'; el.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:99;background:#5a1d18;color:#fff;padding:10px 14px;font:13px/1.5 system-ui;white-space:pre-wrap;word-break:break-all'; document.body.appendChild(el); }
+  var src = (e.filename || '').split('/').pop();
+  el.textContent = '画面でエラーが起きました：' + (e.message || e) + '　（' + src + ' ' + (e.lineno || '') + ':' + (e.colno || '') + '）　この文言をそのまま送ってください';
+}, true);
+</script>
 <div class="bar"><div class="in">
   <div class="mark"><span class="wz">ワザモノ</span><span class="wk">works</span></div>
   <select id="store" aria-label="店舗"></select>
@@ -202,7 +211,7 @@ const UNITS = ['kg','g','個','パック','本','袋','箱','ケース','缶','�
 const CONV_UNITS = ['g','個','ml','尾','枚'];
 const KEY = 'tana:v2';
 const POLL_MS = 30000;
-const APP_VER = '2026-10-12 r6';
+const APP_VER = '2026-10-14 r7';
 
 const $ = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => [...r.querySelectorAll(s)];
