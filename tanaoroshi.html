@@ -211,7 +211,7 @@ const UNITS = ['kg','g','個','パック','本','袋','箱','ケース','缶','�
 const CONV_UNITS = ['g','個','ml','尾','枚'];
 const KEY = 'tana:v2';
 const POLL_MS = 30000;
-const APP_VER = '2026-10-14 r7';
+const APP_VER = '2026-10-14 r8';
 
 const $ = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => [...r.querySelectorAll(s)];
@@ -296,7 +296,7 @@ function save(){ clearTimeout(saveT); saveT = setTimeout(() => { if (!ls.set('db
 
 const CFG = Object.assign({ url:'', pw:'', name:'' }, ls.get('cfg') || {});
 const S = { store:'鯛ドロボー', view:'reg', form:null, confirmId:null, draftCount:null, newShelf:null, net:'none', netMsg:'', sheetUrl:'', syncing:false, again:false, localRev:0 };
-{ const u = ls.get('ui'); if (u && STORES.includes(u.store)) S.store = u.store; const qs = new URLSearchParams(location.search).get('store'); if (qs && STORES.includes(qs)) S.store = qs; }   // 店ごとのURL（?store=鯛ドロボー）で開くとその店が選ばれる
+{ const u = ls.get('ui'); if (u && STORES.includes(u.store)) S.store = u.store; const qs = new URLSearchParams(location.search).get('store'); if (qs && STORES.includes(qs)) S.store = qs; }   /* 店ごとのURL（?store=鯛ドロボー）で開くとその店が選ばれる */
 const ui = () => ls.set('ui', { store:S.store });
 const cur = () => DB.stores[S.store];
 /* 棚の呼び方は店ごとに違う（冷蔵庫1、a、上段…）ので、棚のラベルは自由入力。場所に記号があれば「R-1」、無ければ「冷蔵庫 1」 */
@@ -389,7 +389,7 @@ async function pull(store, quiet){
     const r = await api('pull', { store });
     if (r.sheetUrl) S.sheetUrl = r.sheetUrl;
     if (!st.dirty && r.master && (r.masterRev !== st.masterRev || !st.locations.length)) { st.note = r.master.note || ''; st.locations = r.master.locations || []; st.masterRev = r.masterRev; st.seeded = true; }
-    else if (!st.dirty && r.masterRev === 0 && st.locations.length) st.dirty = true;   // サーバーが空で端末にだけ棚がある（初回の鯛など）→ 送る
+    else if (!st.dirty && r.masterRev === 0 && st.locations.length) st.dirty = true;   /* サーバーが空で端末にだけ棚がある（初回の鯛など）→ 送る */
     const local = st.counts.filter(c => !c.synced); st.counts = [...(r.counts || []).map(c => ({ ...c, synced:true })), ...local].sort((a, b) => a.date < b.date ? -1 : 1);
     save(); if (S.store === store) { if (!quiet) render(); setNet(st.dirty ? 'dirty' : 'saved'); }
     if (st.dirty) pushMaster(); pushCounts();
@@ -435,7 +435,7 @@ async function sendSheet(){
   toast('送信中…'); await pushMaster();
   const d = draft(); const nq = all.filter(x => num(d.qty[x.item.id]) != null).length;
   let closed = null;
-  if (nq) { if (!d.by && CFG.name) d.by = CFG.name; closed = closeCount(true); }   // 量が入っていれば、この時点の在庫として締めてシートへ
+  if (nq) { if (!d.by && CFG.name) d.by = CFG.name; closed = closeCount(true); }   /* 量が入っていれば、この時点の在庫として締めてシートへ */
   await pushCounts();
   if (S.net === 'saved') toast(`送信しました：商品 ${all.length}（量あり ${nq}・仕込み品 ${all.filter(x => x.item.prep).length}・写真 ${all.filter(x => x.item.photo).length}）${closed ? '　在庫金額 ' + yen(closed.total) : ''}`);
   else if (S.net === 'error') toast('送信に失敗しました：' + S.netMsg);
