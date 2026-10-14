@@ -15,12 +15,28 @@ var H_PRICE  = ['店舗', '棚', '商品', '数える単位', '適用日', '仕�
 var H_LINES  = ['店舗', '棚卸し日', '棚', '商品', '仕込み品', '数える単位', '数量(正味)', 'はかり表示', '風袋(g)', '円/数える単位', '金額', '重点', 'countId'];
 var H_COUNT  = ['店舗', '棚卸し日', '数えた人', '在庫金額', 'うち重点', 'うち仕込み品', '期間の仕入れ', '期間の売上', '材料費', '材料費率(%)', '締め日時', 'id'];
 
+/* 画面（tanaoroshi.html）は GitHub から読む。GAS 側に HTML を貼らなくてよく、GitHub を更新すれば数分で画面も変わる。
+   別の場所に置きたいときはスクリプトプロパティ HTML_URL に URL を入れる。GAS 内に tanaoroshi という HTML ファイルがあればそちらを優先する */
+var HTML_URL_DEFAULT = 'https://raw.githubusercontent.com/srikro1011-glitch/wazamono-karte/ccr-d62f97e1-3qs475/tanaoroshi.html';
+function loadHtml_() {
+  try { return HtmlService.createHtmlOutputFromFile('tanaoroshi').getContent(); } catch (e) {}
+  var cache = CacheService.getScriptCache(), key = 'html_v1';
+  var hit = cache.get(key);
+  if (hit) return hit;
+  var url = PropertiesService.getScriptProperties().getProperty('HTML_URL') || HTML_URL_DEFAULT;
+  var html = UrlFetchApp.fetch(url, { muteHttpExceptions: true }).getContentText('UTF-8');
+  if (html.length < 1000 || html.indexOf('<script>') < 0) throw new Error('画面を読み込めませんでした: ' + url);
+  try { cache.put(key, html, 300); } catch (e) {}   // 5分キャッシュ（100KB 以内なら入る）
+  return html;
+}
 function doGet(e) {
-  return HtmlService.createHtmlOutputFromFile('tanaoroshi')
+  return HtmlService.createHtmlOutput(loadHtml_())
     .setTitle('棚卸し 棚マスタ')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
+/* GitHub を更新した直後に反映させたいとき：エディタでこの関数を実行する */
+function clearHtmlCache() { CacheService.getScriptCache().remove('html_v1'); }
 function doPost(e) {
   var body = {};
   try { body = JSON.parse(e.postData.contents); } catch (err) {}
