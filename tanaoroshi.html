@@ -424,7 +424,6 @@ function boot(){
 }
 function setView(v){ S.view = v; $$('.tab').forEach(x => x.classList.toggle('on', x.dataset.v === v)); render(); }
 function render(){ ({ reg:renderReg, count:renderCount, price:renderPrice, out:renderOut, cfg:renderCfg })[S.view](); setNet(S.net, S.netMsg); if (window.claude) $$('[data-act="dl"]').forEach(b => b.hidden = true); }
-/* GASの配信は `//` をコメントとして消すので、URLの // は文字列を分けて書く */
 const thumb = p => !p ? '' : p.dataUrl ? p.dataUrl : (p.url && (p.url.match(/\/d\/([\w-]+)/) || p.url.match(/[?&]id=([\w-]+)/))) ? 'https:' + '/' + '/drive.google.com/thumbnail?id=' + (p.url.match(/\/d\/([\w-]+)/) || p.url.match(/[?&]id=([\w-]+)/))[1] + '&sz=w400' : (p.url || '');
 
 /* 一番下の送信ボタン：自動送信と同じ処理を今すぐ走らせ、結果を言葉で返す */
@@ -482,7 +481,7 @@ function shelfHtml(loc, sh){
       ${sh.photo ? `<img class="shelfph" src="${esc(thumb(sh.photo))}" alt="">` : ''}
       <span class="nm" data-act="rename-shelf" title="タップで補足を変更">${esc(sh.name || '')}</span>
       <span class="cnt">${sh.items.length}</span>
-      <label class="ic" title="棚の写真" style="display:inline-flex;align-items:center;justify-content:center;cursor:pointer">📷<input type="file" accept="image/*" capture="environment" data-shelfphoto="${sh.id}" style="display:none"></label>
+      <label class="ic" title="棚の写真" style="display:inline-flex;align-items:center;justify-content:center;cursor:pointer">📷<input type="file" accept="image/&#42;" capture="environment" data-shelfphoto="${sh.id}" style="display:none"></label>
       <button class="ic" data-act="shelf-up" title="上へ">↑</button><button class="ic" data-act="shelf-down" title="下へ">↓</button>
       ${delBtn('shelf', sh.id)}
     </div>
@@ -505,7 +504,7 @@ function itemForm(f){
   return `<div class="form" id="itemform">
     <label>商品の名前 <b style="color:var(--gold)">必須</b></label><input id="f-name" value="${esc(f.name)}" placeholder="例：本マグロ赤身" autocomplete="off">
     <div class="photo">${f.photo ? `<img src="${esc(thumb(f.photo))}" alt=""><button class="ic" data-act="del-photo" title="写真を外す">×</button>` : ''}
-      <label class="filebtn">📷 ${f.photo ? '撮り直す' : '写真を撮る'}<input type="file" accept="image/*" capture="environment" id="f-photo"></label></div>
+      <label class="filebtn">📷 ${f.photo ? '撮り直す' : '写真を撮る'}<input type="file" accept="image/&#42;" capture="environment" id="f-photo"></label></div>
     <div class="actions">
       <button class="cb ${f.prep ? 'on' : ''}" data-act="toggle-prep">仕込み品</button>
       <button class="cb ${f.star ? 'on' : ''}" data-act="toggle-star">★ 重点（毎回数える）</button>
