@@ -669,7 +669,7 @@ function renderCfg(){
       <p>${IN_GAS ? 'Apps Script 上で開いているので、同期先の設定は不要です。' : MOCK ? '疑似サーバー（?mock=1）で動いています。' : '別サイトとして開いているので、Apps Script のウェブアプリURLを入れてください。'}</p></div>
     <div class="card">
       <label>あなたの名前（更新者として記録されます）</label><input id="g-name" value="${esc(CFG.name)}" placeholder="例：工藤">
-      ${IN_GAS || MOCK ? '' : `<label>ウェブアプリURL（tanaoroshi.gs を「ウェブアプリ」としてデプロイしたURL）</label><input id="g-url" value="${esc(CFG.url)}" placeholder="https://script.google.com/macros/s/…/exec" inputmode="url">`}
+      ${IN_GAS || MOCK ? '' : `<label>ウェブアプリURL（tanaoroshi.gs を「ウェブアプリ」としてデプロイしたURL）</label><input id="g-url" value="${esc(CFG.url)}" placeholder="https:/&#47;script.google.com/macros/s/…/exec" inputmode="url">`}
       <label>パスワード（GASのスクリプトプロパティ PW に設定した場合だけ）</label><input id="g-pw" type="password" value="${esc(CFG.pw)}" autocomplete="current-password">
       <div class="actions"><button class="btn" data-act="save-cfg">保存して接続</button><button class="btn ghost" data-act="diag">接続診断</button></div>
       <div class="diag" id="diag" hidden></div>
