@@ -424,7 +424,8 @@ function boot(){
 }
 function setView(v){ S.view = v; $$('.tab').forEach(x => x.classList.toggle('on', x.dataset.v === v)); render(); }
 function render(){ ({ reg:renderReg, count:renderCount, price:renderPrice, out:renderOut, cfg:renderCfg })[S.view](); setNet(S.net, S.netMsg); if (window.claude) $$('[data-act="dl"]').forEach(b => b.hidden = true); }
-const thumb = p => !p ? '' : p.dataUrl ? p.dataUrl : (p.url && (p.url.match(/\/d\/([\w-]+)/) || p.url.match(/[?&]id=([\w-]+)/))) ? `https://drive.google.com/thumbnail?id=${(p.url.match(/\/d\/([\w-]+)/) || p.url.match(/[?&]id=([\w-]+)/))[1]}&sz=w400` : (p.url || '');
+/* GASの配信は `//` をコメントとして消すので、URLの // は文字列を分けて書く */
+const thumb = p => !p ? '' : p.dataUrl ? p.dataUrl : (p.url && (p.url.match(/\/d\/([\w-]+)/) || p.url.match(/[?&]id=([\w-]+)/))) ? 'https:' + '/' + '/drive.google.com/thumbnail?id=' + (p.url.match(/\/d\/([\w-]+)/) || p.url.match(/[?&]id=([\w-]+)/))[1] + '&sz=w400' : (p.url || '');
 
 /* 一番下の送信ボタン：自動送信と同じ処理を今すぐ走らせ、結果を言葉で返す */
 async function sendSheet(){
