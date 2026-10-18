@@ -73,11 +73,39 @@ function sheet_(ss, name, header) {
 function dataRow_(ss, store) {
   var sh = sheet_(ss, '_data', H_DATA);
   var vals = sh.getDataRange().getValues();
-  for (var i = 1; i < vals.length; i++) if (vals[i][0] === store) return { sh: sh, row: i + 1, vals: vals[i] };
+  for (var i = 1; i < vals.length; i++) if (vals[i][0] === store) {
+    var v = vals[i].slice();
+    v[2] = getBig_(ss, store, 'master', v[2]); v[3] = getBig_(ss, store, 'counts', v[3]);
+    return { sh: sh, row: i + 1, vals: v };
+  }
   sh.appendRow([store, 0, JSON.stringify({ note: '', locations: [] }), '[]', new Date(), '']);
   return { sh: sh, row: sh.getLastRow(), vals: [store, 0, JSON.stringify({ note: '', locations: [] }), '[]', new Date(), ''] };
 }
 function parse_(s, d) { try { return s ? JSON.parse(s) : d; } catch (e) { return d; } }
+
+/* 1つのセルは5万文字まで。長いJSONは「_chunks」シートに分けて置き、_data のセルには目印だけ書く */
+var CHUNK = 45000, CHUNK_MARK = '@@chunks:';
+function chunkSheet_(ss) { return sheet_(ss, '_chunks', ['店舗', '項目', '順番', '中身']); }
+function getBig_(ss, store, field, cell) {
+  if (typeof cell !== 'string' || cell.indexOf(CHUNK_MARK) !== 0) return cell;
+  var vals = chunkSheet_(ss).getDataRange().getValues().slice(1)
+    .filter(function (v) { return v[0] === store && v[1] === field; })
+    .sort(function (a, b) { return Number(a[2]) - Number(b[2]); });
+  return vals.map(function (v) { return String(v[3]); }).join('');
+}
+function putBig_(ss, store, field, str) {
+  var sh = chunkSheet_(ss);
+  var vals = sh.getDataRange().getValues();
+  var keep = vals.slice(1).filter(function (v) { return !(v[0] === store && v[1] === field); });
+  var add = [];
+  if (str.length > CHUNK) for (var i = 0, k = 0; i < str.length; i += CHUNK, k++) add.push([store, field, k, str.slice(i, i + CHUNK)]);
+  if (add.length || keep.length !== vals.length - 1) {
+    if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 4).clearContent();
+    var out = keep.concat(add);
+    if (out.length) sh.getRange(2, 1, out.length, 4).setNumberFormat('@').setValues(out);
+  }
+  return add.length ? CHUNK_MARK + add.length : str;
+}
 
 function version(arg) {
   var r = dataRow_(ss_(), arg.store);
@@ -94,7 +122,8 @@ function pushMaster(arg) {
     var rev = Number(r.vals[1]) || 0;
     if (Number(arg.base) !== rev) return { conflict: true, masterRev: rev, master: parse_(r.vals[2], { note: '', locations: [] }) };
     rev++;
-    r.sh.getRange(r.row, 2, 1, 5).setValues([[rev, JSON.stringify(arg.master || {}), r.vals[3], new Date(), arg.editor || '']]);
+    r.sh.getRange(r.row, 2, 1, 2).setValues([[rev, putBig_(ss, arg.store, 'master', JSON.stringify(arg.master || {}))]]);
+    r.sh.getRange(r.row, 5, 1, 2).setValues([[new Date(), arg.editor || '']]);
     writeMaster_(ss, arg.store, arg.master || {});
     return { masterRev: rev };
   } finally { lock.releaseLock(); }
@@ -110,7 +139,7 @@ function pushCounts(arg) {
       if (i >= 0) counts[i] = c; else counts.push(c);
     });
     counts.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
-    r.sh.getRange(r.row, 4, 1, 3).setValues([[JSON.stringify(counts), new Date(), arg.editor || '']]);
+    r.sh.getRange(r.row, 4, 1, 3).setValues([[putBig_(ss, arg.store, 'counts', JSON.stringify(counts)), new Date(), arg.editor || '']]);
     writeCounts_(ss, arg.store, counts);
     writeStoreSheet_(ss, arg.store, parse_(r.vals[2], { locations: [] }));
     return { n: counts.length };
@@ -121,7 +150,7 @@ function deleteCount(arg) {
   try {
     var ss = ss_(), r = dataRow_(ss, arg.store);
     var counts = parse_(r.vals[3], []).filter(function (c) { return c.id !== arg.id; });
-    r.sh.getRange(r.row, 4, 1, 2).setValues([[JSON.stringify(counts), new Date()]]);
+    r.sh.getRange(r.row, 4, 1, 2).setValues([[putBig_(ss, arg.store, 'counts', JSON.stringify(counts)), new Date()]]);
     writeCounts_(ss, arg.store, counts);
     return true;
   } finally { lock.releaseLock(); }
